@@ -1,59 +1,141 @@
 import Link from 'next/link'
+import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
+
+const highlights = [
+  {
+    title: '24/7 Проверка продавцов',
+    description: 'Каждый магазин проходит юридический и маркетинговый аудит перед запуском.',
+  },
+  {
+    title: 'Смарт-аналитика продаж',
+    description: 'AI-дашборды прогнозируют спрос и подсказывают вам товары для витрины.',
+  },
+  {
+    title: 'Омниканальные покупки',
+    description: 'Один клик — и товар уже в доставке. Поддержка курьеров, ПВЗ и самовывоза.',
+  },
+]
+
+const categories = [
+  { title: 'Tech & Gadgets', count: '3.1k товаров', accent: 'from-cyan-400/40 via-blue-500/20 to-transparent' },
+  { title: 'Fashion & Lifestyle', count: '1.8k товаров', accent: 'from-fuchsia-400/40 via-purple-500/20 to-transparent' },
+  { title: 'Home Comfort', count: '2.4k товаров', accent: 'from-amber-400/40 via-orange-500/20 to-transparent' },
+]
 
 export default function Home() {
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center px-4 w-full">
-        <div className="text-center max-w-4xl mx-auto">
-          <div className="animate-fade-in">
-            <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 mb-8 border border-gray-200 shadow-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">Live Demo</span>
+    <div className="relative flex-1">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[600px] bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_rgba(15,23,42,0.9))]" />
+
+      <section className="mx-auto max-w-6xl px-6 pb-24 pt-16 md:pt-24">
+        <div className="grid items-center gap-12 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white/70 backdrop-blur">
+              <Sparkles className="h-4 w-4 text-cyan-300" />
+              <span>Маркетплейс нового закона спроса</span>
             </div>
-            
-            <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-              Discover <span className="gradient-text">Amazing</span><br />
-              Products
+
+            <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+              Создавайте витрины и управляйте продажами в одной экосистеме
             </h1>
-            
-            <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Explore our curated collection of premium products. Save your favorites, 
-              create your own items, and enjoy seamless shopping experience.
+
+            <p className="text-lg text-slate-300 md:text-xl">
+              Marketplace Vision объединяет бренды, логистику и аналитику, чтобы ваши товары быстрее попадали к покупателям. Создавайте офферы, запускайте кампании и отслеживайте результат в реальном времени.
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link 
-                href="/products" 
-                className="group bg-gray-900 text-white px-8 py-4 rounded-2xl hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-3 font-semibold"
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/products"
+                className="group inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 px-8 py-3 text-base font-semibold text-slate-950 shadow-[0_20px_45px_-25px_rgba(56,189,248,0.8)] transition-all hover:translate-y-[-2px]"
               >
-                <span>Browse Products</span>
-                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
+                Перейти в каталог
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-              
-              <Link 
-                href="/create-product" 
-                className="group border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl hover:border-gray-400 hover:bg-white transition-all duration-300 flex items-center gap-3 font-semibold backdrop-blur-sm"
+              <Link
+                href="/create-product"
+                className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-8 py-3 text-base font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white"
               >
-                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add Productt</span>
+                Вывести товар на рынок
               </Link>
             </div>
-            
-            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-60">
-              {['🚀 Fast', '🎨 Modern', '💡 Simple', '❤️ Interactive'].map((feature) => (
-                <div key={feature} className="text-center">
-                  <div className="text-2xl mb-2">{feature}</div>
-                  <div className="text-sm text-gray-500">Feature</div>
+
+            <div className="grid gap-6 rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl shadow-cyan-500/10 backdrop-blur">
+              <div className="grid gap-6 sm:grid-cols-3">
+                {highlights.map((feature) => (
+                  <div key={feature.title} className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-200/80">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {feature.title}
+                    </div>
+                    <p className="text-sm text-slate-300/80">{feature.description}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-6 text-xs text-white/50">
+                <span>Совместимо с Wildberries, Ozon, Rozetka</span>
+                <span className="h-1 w-1 rounded-full bg-white/30" />
+                <span>Юридическое сопровождение и маркетинговые кампании</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 -z-10 animate-pulse rounded-[2.5rem] bg-gradient-to-br from-sky-500/30 via-indigo-500/20 to-transparent blur-3xl" />
+            <div className="rounded-[2.5rem] border border-white/10 bg-slate-900/70 p-8 backdrop-blur-xl">
+              <div className="grid gap-6">
+                {categories.map((item) => (
+                  <div
+                    key={item.title}
+                    className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-6 transition-transform hover:-translate-y-1 hover:border-cyan-400/40"
+                  >
+                    <div className={`absolute inset-y-0 right-[-25%] w-2/3 bg-gradient-to-l ${item.accent}`} />
+                    <div className="relative">
+                      <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/40">Категория</span>
+                      <h3 className="mt-3 text-2xl font-semibold text-white">{item.title}</h3>
+                      <p className="mt-2 text-sm text-slate-300">{item.count}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-transparent p-6 text-sm text-slate-200">
+                <p className="font-semibold text-cyan-200/90">Маркетинговый акселератор</p>
+                <p className="mt-2 text-slate-300/90">
+                  Выгружайте карточки на маркетплейсы, запускайте рекламу и синхронизируйте остатки. Мы гарантируем соответствие требованиям закона «О маркетплейсах».
+                </p>
+                <div className="mt-4 inline-flex items-center gap-2 text-cyan-200/80">
+                  Узнать условия
+                  <ArrowRight className="h-4 w-4" />
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl space-y-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200/70">Метрики роста</span>
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">Динамика маркетплейса в реальном времени</h2>
+            <p className="text-base text-slate-300/90">
+              Покупатели доверяют витринам с прозрачной аналитикой. Демонстрируйте продажи, рейтинг, скорость доставки и повышайте позиции в выдаче.
+            </p>
+          </div>
+
+          <div className="grid w-full gap-4 sm:grid-cols-2 lg:max-w-xl">
+            {[{ value: '98%', label: 'Покупателей возвращаются' }, { value: '12 мин', label: 'Среднее время до первой продажи' }, { value: '6 стран', label: 'Легальная доставка без границ' }, { value: '4.9/5', label: 'Средний рейтинг продавцов' }].map((metric) => (
+              <div
+                key={metric.label}
+                className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-center shadow-lg shadow-cyan-500/5"
+              >
+                <div className="text-3xl font-semibold text-white">{metric.value}</div>
+                <p className="mt-2 text-sm text-slate-400">{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

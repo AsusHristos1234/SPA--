@@ -8,8 +8,8 @@ import Pagination from '@/components/Pagination'
 import Link from 'next/link'
 
 export default function ProductsPage() {
-  const { 
-    initializeProducts, 
+  const {
+    initializeProducts,
     getPaginatedProducts,
     setSearchQuery,
     setFilters 
@@ -32,77 +32,83 @@ export default function ProductsPage() {
   const products = getPaginatedProducts(currentPage, productsPerPage)
   const totalPages = Math.ceil(useProductStore.getState().getFilteredProducts().length / productsPerPage)
 
-  return (
-    <div className="flex-1 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Product Catalog</h1>
-              <p className="text-gray-600 text-sm">Discover amazing products</p>
-            </div>
-            <Link 
-              href="/create-product"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Product
-            </Link>
-          </div>
-        </div>
-      </div>
+  const filteredLength = useProductStore.getState().getFilteredProducts().length
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <SearchFilter 
-          onSearch={setSearchQuery}
-          onFilterChange={setFilters}
-        />
-        
-        {isLoading ? (
-          <div className="flex justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  return (
+    <div className="flex-1 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_rgba(2,6,23,0.95))] pb-20">
+      <div className="relative mx-auto max-w-6xl px-6 pt-16">
+        <div className="mb-10 flex flex-col gap-6 rounded-3xl border border-white/10 bg-slate-900/70 p-8 backdrop-blur xl:flex-row xl:items-center xl:justify-between">
+          <div className="max-w-2xl space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200/70">Каталог</p>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Управляйте товарами и продавайте по новым стандартам маркетплейса</h1>
+            <p className="text-sm text-slate-300">
+              Синхронизируйте ассортимент, запускайте кампании и отслеживайте показатели. Каталог обновляется в реальном времени и соответствует требованиям закона о маркетплейсах.
+            </p>
+          </div>
+          <Link
+            href="/create-product"
+            className="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_20px_45px_-25px_rgba(56,189,248,0.8)] transition-transform hover:translate-y-[-2px]"
+          >
+            Добавить продукт
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          </Link>
+        </div>
+
+        <div className="flex flex-col gap-10">
+          <SearchFilter
+            onSearch={setSearchQuery}
+            onFilterChange={setFilters}
+          />
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl shadow-md p-4 animate-pulse w-80">
-                  <div className="bg-gray-300 h-48 rounded-xl mb-4"></div>
-                  <div className="bg-gray-300 h-4 rounded mb-2"></div>
-                  <div className="bg-gray-300 h-4 rounded w-3/4"></div>
+                <div
+                  key={i}
+                  className="animate-pulse rounded-3xl border border-white/10 bg-slate-900/60 p-6"
+                >
+                  <div className="mb-4 h-40 rounded-2xl bg-slate-700/60" />
+                  <div className="mb-2 h-4 rounded-full bg-slate-700/60" />
+                  <div className="h-4 w-2/3 rounded-full bg-slate-700/60" />
                 </div>
               ))}
             </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-6">
-              <div className="text-gray-600">
-                Showing {products.length} of {useProductStore.getState().getFilteredProducts().length} products
+          ) : (
+            <>
+              <div className="flex flex-col gap-6 rounded-3xl border border-white/5 bg-white/5 p-6 text-sm text-white/70 backdrop-blur-lg sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  Найдено {filteredLength} товаров · страница {currentPage} из {totalPages}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white">
+                    Все товары
+                  </button>
+                  <button className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/60 transition-colors hover:border-white/30 hover:text-white">
+                    Избранное
+                  </button>
+                  <button className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/60 transition-colors hover:border-white/30 hover:text-white">
+                    Новинки
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 text-sm">
-                <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                  All Products
-                </button>
-                <button className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full font-medium hover:bg-gray-200">
-                  Favorites
-                </button>
-              </div>
-            </div>
-            
-            <ProductList products={products} />
-            
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-8">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            )}
-          </>
-        )}
+
+              <ProductList products={products} />
+
+              {totalPages > 1 && (
+                <div className="flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { ProductFormData } from '@/types/product'
 
 const productSchema = z.object({
+   
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.number().min(1, 'Price must be greater than 0'),
@@ -31,108 +32,108 @@ export default function ProductForm({ initialData, onSubmit, isEditing = false }
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Product Title *
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-7">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            Название товара *
           </label>
           <input
             {...register('title')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter product title"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none"
+            placeholder="Например, Умная колонка MarketSound"
           />
           {errors.title && (
-            <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
+            <p className="text-xs text-rose-300">{errors.title.message}</p>
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Price *
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            Цена *
           </label>
           <input
             type="number"
             {...register('price', { valueAsNumber: true })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter price"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none"
+            placeholder="Укажите стоимость"
           />
           {errors.price && (
-            <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>
+            <p className="text-xs text-rose-300">{errors.price.message}</p>
           )}
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description *
+      <div className="space-y-2">
+        <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+          Описание *
         </label>
         <textarea
           {...register('description')}
           rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter product description"
+          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none"
+          placeholder="Опишите преимущества, материалы, логистику и гарантию"
         />
         {errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+          <p className="text-xs text-rose-300">{errors.description.message}</p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Category *
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            Категория *
           </label>
           <select
             {...register('category')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-cyan-400/60 focus:outline-none"
           >
-            <option value="">Select category</option>
-            <option value="electronics">Electronics</option>
-            <option value="clothing">Clothing</option>
-            <option value="books">Books</option>
-            <option value="home">Home & Garden</option>
+            <option value="" className="bg-slate-900 text-white">Выберите категорию</option>
+            <option value="electronics" className="bg-slate-900 text-white">Электроника</option>
+            <option value="clothing" className="bg-slate-900 text-white">Одежда</option>
+            <option value="books" className="bg-slate-900 text-white">Книги</option>
+            <option value="home" className="bg-slate-900 text-white">Дом и интерьер</option>
           </select>
           {errors.category && (
-            <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
+            <p className="text-xs text-rose-300">{errors.category.message}</p>
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Image URL *
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            Ссылка на изображение *
           </label>
           <input
             {...register('thumbnailUrl')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter image URL"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none"
+            placeholder="https://"
           />
           {errors.thumbnailUrl && (
-            <p className="text-red-500 text-sm mt-1">{errors.thumbnailUrl.message}</p>
+            <p className="text-xs text-rose-300">{errors.thumbnailUrl.message}</p>
           )}
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Product URL *
+      <div className="space-y-2">
+        <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+          Публичная ссылка на товар *
         </label>
         <input
           {...register('url')}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter product URL"
+          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/60 focus:outline-none"
+          placeholder="https://"
         />
         {errors.url && (
-          <p className="text-red-500 text-sm mt-1">{errors.url.message}</p>
+          <p className="text-xs text-rose-300">{errors.url.message}</p>
         )}
       </div>
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 transition-all"
+        className="w-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 transition-transform hover:-translate-y-1 hover:shadow-[0_25px_50px_-25px_rgba(56,189,248,0.8)] disabled:opacity-60"
       >
-        {isSubmitting ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
+        {isSubmitting ? 'Сохраняем…' : isEditing ? 'Обновить продукт' : 'Создать продукт'}
       </button>
     </form>
   )

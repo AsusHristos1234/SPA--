@@ -22,7 +22,7 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
   }, [search, onSearch])
 
   const handleFilterChange = (key: string, value: any) => {
-    const newFilters = { ...filters, [key]: value }
+       const newFilters = { ...filters, [key]: value }
     setFilters(newFilters)
     onFilterChange(newFilters)
   }
@@ -47,60 +47,60 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
   ]
 
   return (
-    <div className="mb-8 space-y-4">
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
           <input
             type="text"
-            placeholder="Search products by name..."
+            placeholder="Найдите товары по названию, категории или ID"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-700 shadow-sm hover:shadow-md"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-12 py-4 text-sm text-white placeholder:text-white/40 shadow-[0_20px_40px_-30px_rgba(59,130,246,0.8)] backdrop-blur focus:border-cyan-400/60 focus:outline-none focus:ring-0"
           />
         </div>
-        
+
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="px-6 py-4 bg-white border border-gray-200 rounded-2xl hover:shadow-md transition-all duration-200 flex items-center gap-3 text-gray-700 font-medium"
+          className="flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-sm font-semibold text-white/70 transition-colors hover:border-white/30 hover:text-white"
         >
           <SlidersHorizontal size={20} />
-          Filters
+          Расширенный фильтр
           {filters.category !== 'all' || filters.showLiked || filters.priceRange[1] < 1000 ? (
-            <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-              !
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 text-xs font-semibold text-slate-950">
+              •
             </span>
           ) : null}
         </button>
       </div>
 
       {showFilters && (
-        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-gray-200 shadow-lg space-y-6 animate-fade-in">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900 text-lg">Filters</h3>
+        <div className="space-y-6 rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-[0_35px_60px_-45px_rgba(8,47,73,0.9)] backdrop-blur-lg">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-lg font-semibold text-white">Настройте подборку</h3>
             <button
               onClick={clearFilters}
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition-colors hover:text-cyan-200"
             >
               <X size={16} />
-              Clear all
+              Сбросить
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Category
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
+                Категории
               </label>
               <div className="space-y-2">
                 {categories.map((cat) => (
                   <button
                     key={cat.value}
                     onClick={() => handleFilterChange('category', cat.value)}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center gap-3 ${
+                    className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all ${
                       filters.category === cat.value
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-transparent'
+                        ? 'border-cyan-400/60 bg-cyan-500/10 text-white'
+                        : 'border-white/5 bg-white/5 text-white/70 hover:border-white/20 hover:text-white'
                     }`}
                   >
                     <span className="text-lg">{cat.emoji}</span>
@@ -110,44 +110,42 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Price Range: <span className="text-blue-600">${filters.priceRange[0]} - ${filters.priceRange[1]}</span>
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
+                Диапазон цены
               </label>
-              <div className="bg-gray-50 p-4 rounded-xl">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="flex items-center justify-between text-sm text-white/60">
+                  <span>${filters.priceRange[0]}</span>
+                  <span>${filters.priceRange[1]}</span>
+                </div>
                 <input
                   type="range"
                   min="0"
                   max="1000"
                   value={filters.priceRange[1]}
                   onChange={(e) => handleFilterChange('priceRange', [0, parseInt(e.target.value)])}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500"
+                  className="mt-4 w-full appearance-none rounded-full bg-slate-800 accent-cyan-400 [@supports(color:color(display-p3_1_1_1))]:accent-[color(display-p3_0.2_0.8_1)]"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
-                  <span>$0</span>
-                  <span>$1000</span>
-                </div>
+                <div className="mt-3 text-xs text-white/50">Соответствует требованиям минимальной публичной оферты</div>
               </div>
             </div>
 
-            <div className="flex items-center justify-center">
-              <label className="flex items-center cursor-pointer group">
-                <div className="relative">
+            <div className="flex items-center">
+              <label className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-6 transition-colors hover:border-white/30">
+                <div className="relative h-8 w-14">
                   <input
                     type="checkbox"
                     checked={filters.showLiked}
                     onChange={(e) => handleFilterChange('showLiked', e.target.checked)}
-                    className="sr-only"
+                    className="peer sr-only"
                   />
-                  <div className={`w-14 h-7 rounded-full transition-colors duration-200 ${
-                    filters.showLiked ? 'bg-red-500' : 'bg-gray-300'
-                  }`}></div>
-                  <div className={`absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform duration-200 ${
-                    filters.showLiked ? 'transform translate-x-7' : ''
-                  }`}></div>
+                  <div className="absolute inset-0 rounded-full bg-slate-800 transition-colors peer-checked:bg-gradient-to-r peer-checked:from-rose-500 peer-checked:to-orange-400" />
+                  <div className="absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition-transform peer-checked:translate-x-6" />
                 </div>
-                <span className="ml-3 text-gray-700 font-medium group-hover:text-gray-900 transition-colors">
-                  Show liked only ❤️
+                <span className="text-sm font-semibold text-white/70 group-hover:text-white">
+                  Показывать избранные
+                  <span className="mt-1 block text-xs font-normal text-white/40">Ускоряйте продажи топовых SKU</span>
                 </span>
               </label>
             </div>

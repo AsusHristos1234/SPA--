@@ -13,6 +13,7 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter()
   const { toggleLike, deleteProduct } = useProductStore()
+    
   const [imageLoaded, setImageLoaded] = useState(false)
 
   const handleCardClick = () => {
@@ -38,23 +39,23 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
-      electronics: 'bg-blue-100 text-blue-800',
-      clothing: 'bg-purple-100 text-purple-800',
-      books: 'bg-green-100 text-green-800',
-      home: 'bg-orange-100 text-orange-800'
+      electronics: 'border border-cyan-400/40 bg-cyan-500/10 text-cyan-200',
+      clothing: 'border border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-200',
+      books: 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
+      home: 'border border-amber-400/40 bg-amber-500/10 text-amber-200'
     }
-    return colors[category] || 'bg-gray-100 text-gray-800'
+    return colors[category] || 'border border-white/20 bg-white/5 text-white/60'
   }
 
   return (
-    <div 
-      className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:-translate-y-2 flex flex-col h-full border border-gray-100 overflow-hidden"
+    <div
+      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur transition-all duration-300 hover:-translate-y-2 hover:border-cyan-400/40 hover:shadow-[0_35px_60px_-30px_rgba(59,130,246,0.6)]"
       onClick={handleCardClick}
     >
       <div className="relative flex-1">
         <div className="relative h-56 overflow-hidden">
           {!imageLoaded && (
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-800 to-slate-700" />
           )}
           <img
             src={product.thumbnailUrl}
@@ -64,76 +65,74 @@ export default function ProductCard({ product }: ProductCardProps) {
             }`}
             onLoad={() => setImageLoaded(true)}
           />
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </div>
-        
+
         <div className="absolute top-4 right-4 flex gap-2">
           <button
             onClick={handleLike}
-            className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
-              product.isLiked 
-                ? 'bg-red-500 text-white shadow-lg' 
-                : 'bg-white/90 text-gray-600 hover:bg-white hover:shadow-lg'
+            className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/20 backdrop-blur transition-all duration-300 hover:scale-110 ${
+              product.isLiked
+                ? 'bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-lg shadow-rose-500/40'
+                : 'bg-slate-900/70 text-white/70 hover:text-white'
             }`}
           >
             <Heart size={18} fill={product.isLiked ? 'currentColor' : 'none'} />
           </button>
-          
+
           <button
             onClick={handleEdit}
-            className="p-2 rounded-full backdrop-blur-sm bg-white/90 text-gray-600 hover:bg-white hover:shadow-lg transition-all duration-300 transform hover:scale-110 opacity-0 group-hover:opacity-100"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-slate-900/70 text-white/70 opacity-0 transition-all duration-300 hover:scale-110 hover:text-white group-hover:opacity-100"
           >
             <Edit size={18} />
           </button>
-          
+
           <button
             onClick={handleDelete}
-            className="p-2 rounded-full backdrop-blur-sm bg-white/90 text-gray-600 hover:bg-white hover:shadow-lg transition-all duration-300 transform hover:scale-110 opacity-0 group-hover:opacity-100"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-slate-900/70 text-white/70 opacity-0 transition-all duration-300 hover:scale-110 hover:text-white group-hover:opacity-100"
           >
             <Trash2 size={18} />
           </button>
         </div>
 
         <div className="absolute top-4 left-4">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1 text-sm font-medium">
-            <Star size={14} className="text-yellow-500 fill-current" />
-            <span className="text-gray-700">{(Math.random() * 2 + 3).toFixed(1)}</span>
+          <div className="flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/70 px-3 py-1 text-sm font-medium text-white/80 backdrop-blur">
+            <Star size={14} className="text-amber-400" />
+            <span>{(Math.random() * 2 + 3).toFixed(1)}</span>
           </div>
         </div>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1 pr-2 group-hover:text-blue-600 transition-colors">
+      <div className="flex flex-1 flex-col p-6">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h3 className="flex-1 pr-2 text-base font-semibold text-white transition-colors group-hover:text-cyan-300">
             {product.title}
           </h3>
-          
+
           {product.price && (
-            <div className="text-2xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
+            <div className="bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-2xl font-bold text-transparent">
               ${product.price}
             </div>
           )}
         </div>
-        
-        <div className="mt-auto space-y-3">
+
+        <div className="mt-auto space-y-4">
           {product.category && (
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(product.category)}`}>
+            <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${getCategoryColor(product.category)}`}>
               {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
             </span>
           )}
-          
-          <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+
+          <p className="line-clamp-2 text-sm leading-relaxed text-white/60">
             {product.description || 'No description available for this amazing product.'}
           </p>
-          
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors">
-              View Details →
+
+          <div className="flex items-center justify-between border-t border-white/10 pt-3 text-xs text-white/50">
+            <button className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300 transition-colors hover:text-cyan-200">
+              Смотреть карточку
             </button>
-            <div className="text-xs text-gray-500">
-              ID: {product.id}
-            </div>
+            <div>ID: {product.id}</div>
           </div>
         </div>
       </div>
