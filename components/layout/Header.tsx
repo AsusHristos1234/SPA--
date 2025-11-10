@@ -55,10 +55,11 @@ export function Header() {
           </div>
 
           {/* Мобильное меню */}
-          <div className="md:hidden">
+             <div className="md:hidden ml-auto -mr-6">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-1 text-gray-600"
+              aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
             >
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
