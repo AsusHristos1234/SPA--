@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react'
 
+
 const highlights = [
   {
     title: '24/7 Проверка продавцов',
