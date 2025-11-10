@@ -49,9 +49,9 @@ const footerColumns: FooterColumn[] = [
   {
     title: 'Контакты'  ,
     details: [
-      'Viber: +38 (093) 443-78-45',
-      'WhatsApp & Telegram: +38 (067) 923-52-19',
-      'Тел.: +38 (044) 451-75-87',
+      'Viber: +8 (888)-888-88-88',
+      'WhatsApp & Telegram: +8 (888)-888-88-88',
+      'Тел.: +8 (888)-888-88-88'
     ],
   },
 ]
@@ -135,8 +135,8 @@ function Footer() {
 
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>© mobios.school 2013–2025 | Все права защищены.</p>
-          <p>Разработка и продвижение mobios.ua</p>
+          <p>©2013–2025 | Все права защищены.</p>
+          <p>Разработка и продвижение</p>
         </div>
       </div>
     </footer>
