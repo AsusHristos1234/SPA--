@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 const API_TIMEOUT = 35; // seconds for long polling
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -7,7 +10,85 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
+const ADMIN_IDS = (process.env.ADMIN_IDS || '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
+
 const API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+const DATA_FILES = {
+  monsters: path.join(__dirname, 'data', 'monsters.json'),
+  items: path.join(__dirname, 'data', 'items.json'),
+  locations: path.join(__dirname, 'data', 'locations.json'),
+};
+
+let monsters = [];
+let items = [];
+let locations = [];
+let monstersById = new Map();
+let itemsById = new Map();
+let locationsById = new Map();
+
+function loadJsonFile(filePath, fallback = []) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error(`Не удалось прочитать ${filePath}:`, error.message);
+    return fallback;
+  }
+}
+
+function saveJsonFile(filePath, data) {
+  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+}
+
+function rebuildIndexes() {
+  monstersById = new Map(monsters.map((monster) => [monster.id, monster]));
+  itemsById = new Map(items.map((item) => [item.id, item]));
+  locationsById = new Map(locations.map((location) => [location.id, location]));
+}
+
+function refreshData() {
+  monsters = loadJsonFile(DATA_FILES.monsters);
+  items = loadJsonFile(DATA_FILES.items);
+  locations = loadJsonFile(DATA_FILES.locations);
+  rebuildIndexes();
+}
+
+refreshData();
+
+function getMonster(id) {
+  return monstersById.get(id);
+}
+
+function getItem(id) {
+  return itemsById.get(id);
+}
+
+function getLocation(id) {
+  return locationsById.get(id);
+}
+
+function itemName(id) {
+  return getItem(id)?.name || id;
+}
+
+function formatItemList(ids) {
+  if (!ids || ids.length === 0) {
+    return 'пусто';
+  }
+  return ids.map((id) => itemName(id)).join(', ');
+}
+
+function locationTitle(id, fallback) {
+  return getLocation(id)?.title || fallback;
+}
+
+function locationDescription(id, fallback = '') {
+  return getLocation(id)?.description || fallback;
+}
 
 const sessions = new Map();
 
@@ -17,24 +98,35 @@ function createNewState() {
     hp: 20,
     mana: 10,
     gold: 5,
-    inventory: ['Потрёпанный плащ'],
+    inventory: ['tattered_cloak'],
     log: [],
   };
 }
 
+function resolveStep(stepKey, state) {
+  const stepFactory = STEPS[stepKey];
+  if (!stepFactory) {
+    return undefined;
+  }
+  return typeof stepFactory === 'function' ? stepFactory(state) : stepFactory;
+}
+
 const STEPS = {
-  villageGate: {
-    title: 'Ворота деревни Эльдруин',
+  villageGate: () => ({
+    title: locationTitle('villageGate', 'Ворота деревни Эльдруин'),
     description:
-      'Вы стоите у ворот деревни Эльдруин. Ночь сгущается, и вдалеке слышны волчьи завывания. Отсюда можно пройти в таверну, на рыночную площадь или сразу отправиться в тёмный лес.',
+      `${locationDescription('villageGate', 'Вы стоите у ворот деревни.')} ` +
+      'Ночь сгущается, и вдалеке слышны волчьи завывания. Отсюда можно пройти в таверну, на рыночную площадь или сразу отправиться в тёмный лес.',
     options: [
       {
-        text: 'Зайти в таверну «Лунный кабан»',
+        text: `Зайти в таверну «${locationTitle('tavern', 'Лунный кабан')}»`,
         next: 'tavern',
         apply: (state) => {
           state.hp = Math.min(state.hp + 3, 20);
           state.gold = Math.max(state.gold - 1, 0);
-          return { text: 'Вы заказали тёплый суп. Силы восстановлены (+3 ОЗ), но вам пришлось заплатить 1 золотой.' };
+          return {
+            text: `Вы заказали тёплый суп. Силы восстановлены (+3 ОЗ), но вам пришлось заплатить 1 золотой.`,
+          };
         },
       },
       {
@@ -42,8 +134,8 @@ const STEPS = {
         next: 'market',
         apply: (state) => {
           state.gold += 3;
-          if (!state.inventory.includes('Амулет удачи')) {
-            state.inventory.push('Амулет удачи');
+          if (!state.inventory.includes('lucky_amulet')) {
+            state.inventory.push('lucky_amulet');
           }
           return {
             text: 'Торговец заметил в вас искру отваги и подарил амулет. В кошельке теперь на 3 золотых больше!',
@@ -56,18 +148,19 @@ const STEPS = {
         apply: () => ({ text: 'Вы смело шагаете в сторону шепчущих ветвей.' }),
       },
     ],
-  },
-  tavern: {
-    title: 'Таверна «Лунный кабан»',
+  }),
+  tavern: () => ({
+    title: locationTitle('tavern', 'Таверна «Лунный кабан»'),
     description:
-      'Гул голосов и запах пряных трав наполняют воздух. Хозяин таверны рассказывает о древнем артефакте — Сердце Бури. Оно спрятано в руинах вглуби леса.',
+      `${locationDescription('tavern', 'Гул голосов и запах пряностей заполняют зал.')}` +
+      ' Хозяин таверны рассказывает о древнем артефакте — Сердце Бури. Оно спрятано в руинах вглуби леса.',
     options: [
       {
         text: 'Согласиться помочь тавернщику',
         next: 'forestEntrance',
         apply: (state) => {
-          if (!state.inventory.includes('Карта руин')) {
-            state.inventory.push('Карта руин');
+          if (!state.inventory.includes('ruins_map')) {
+            state.inventory.push('ruins_map');
           }
           return {
             text: 'Хозяин благодарит вас и вручает карту руин. Вы чувствуете ответственность за деревню.',
@@ -85,14 +178,15 @@ const STEPS = {
         },
       },
     ],
-  },
-  market: {
-    title: 'Рыночная площадь',
+  }),
+  market: () => ({
+    title: locationTitle('market', 'Рыночная площадь'),
     description:
-      'Площадь полна торговцев. Один старик показывает свёрток с травами, другой предлагает услугу зачарования.',
+      `${locationDescription('market', 'Площадь полна торговцев.')}` +
+      ' Один старик показывает свёрток с травами, другой предлагает услугу зачарования.',
     options: [
       {
-        text: 'Купить лечебные травы (2 золота)',
+        text: `Купить ${itemName('healing_herbs')} (2 золота)`,
         next: 'villageGate',
         apply: (state) => {
           if (state.gold < 2) {
@@ -102,15 +196,16 @@ const STEPS = {
             };
           }
           state.gold -= 2;
-          state.inventory.push('Лечебные травы');
-          state.hp = Math.min(state.hp + 5, 20);
+          state.inventory.push('healing_herbs');
+          const healValue = getItem('healing_herbs')?.effects?.heal ?? 5;
+          state.hp = Math.min(state.hp + healValue, 20);
           return {
-            text: 'Травы приятно пахнут. Вы накладываете повязку и восстанавливаете силы (+5 ОЗ).',
+            text: `${itemName('healing_herbs')} приятно пахнут. Вы накладываете повязку и восстанавливаете силы (+${healValue} ОЗ).`,
           };
         },
       },
       {
-        text: 'Оплатить зачарование оружия (3 золота)',
+        text: `Оплатить зачарование оружия (3 золота)`,
         next: 'villageGate',
         apply: (state) => {
           if (state.gold < 3) {
@@ -120,8 +215,8 @@ const STEPS = {
             };
           }
           state.gold -= 3;
-          if (!state.inventory.includes('Зачарованный клинок')) {
-            state.inventory.push('Зачарованный клинок');
+          if (!state.inventory.includes('enchanted_blade')) {
+            state.inventory.push('enchanted_blade');
           }
           state.log.push('Ваш клинок теперь светится мягким голубым сиянием.');
           return { text: 'Клинок наполнился магией, ваши атаки станут сильнее.' };
@@ -138,11 +233,12 @@ const STEPS = {
         },
       },
     ],
-  },
-  forestEntrance: {
-    title: 'Тёмный лес',
+  }),
+  forestEntrance: (state) => ({
+    title: locationTitle('forestEntrance', 'Тёмный лес'),
     description:
-      'Сквозь ветви доносится едва слышный шёпот. Тропинка разделяется: налево — волчье логово, направо — руины храма.',
+      `${locationDescription('forestEntrance', 'Сквозь ветви доносится едва слышный шёпот.')}` +
+      ' Тропинка разделяется: налево — волчье логово, направо — руины храма.',
     options: [
       {
         text: 'Пойти к волчьему логову',
@@ -153,7 +249,7 @@ const STEPS = {
         text: 'Следовать к руинам храма',
         next: 'ancientRuins',
         apply: (state) => {
-          if (!state.inventory.includes('Карта руин')) {
+          if (!state.inventory.includes('ruins_map')) {
             state.hp = Math.max(state.hp - 3, 0);
             return {
               text: 'Без карты вы блуждали и поцарапались о ветви (-3 ОЗ), но всё же нашли путь.',
@@ -172,138 +268,172 @@ const STEPS = {
         },
       },
     ],
-  },
-  wolfDen: {
-    title: 'Логово волков',
-    description:
-      'Впереди слышится рычание. Серебристый альфа-волк вышел навстречу, его глаза горят яростью.',
-    options: [
-      {
-        text: 'Атаковать зачарованным клинком',
-        next: 'forestEntrance',
-        apply: (state) => {
-          const hasSword = state.inventory.includes('Зачарованный клинок');
-          const damage = hasSword ? 0 : 4;
-          state.hp = Math.max(state.hp - damage, 0);
-          state.gold += 4;
-          const swordText = hasSword
-            ? 'Магия клинка ослепляет волка. Вы побеждаете без единой царапины.'
-            : 'Без зачарования бой даётся тяжело. Вы получаете царапины (-4 ОЗ), но побеждаете.';
-          return { text: `${swordText} В логове вы находите 4 золотых.` };
+  }),
+  wolfDen: () => {
+    const monster = getMonster('forest_wolf');
+    const location = getLocation('wolfDen');
+    const descriptionParts = [location?.description || 'В темноте блестят глаза хищника.'];
+    if (monster) {
+      descriptionParts.push(`Перед вами ${monster.name}. ${monster.description}`);
+    }
+    return {
+      title: location?.title || 'Логово волков',
+      description: descriptionParts.join(' '),
+      options: [
+        {
+          text: `Атаковать с ${itemName('enchanted_blade')}`,
+          next: 'forestEntrance',
+          apply: (state) => {
+            const hasSword = state.inventory.includes('enchanted_blade');
+            const damage = hasSword ? 0 : 4;
+            state.hp = Math.max(state.hp - damage, 0);
+            state.gold += monster?.reward?.gold ?? 4;
+            if (monster?.reward?.items) {
+              monster.reward.items.forEach((itemId) => state.inventory.push(itemId));
+            }
+            const swordText = hasSword
+              ? 'Магия клинка ослепляет волка. Вы побеждаете без единой царапины.'
+              : 'Без зачарования бой даётся тяжело. Вы получаете царапины (-4 ОЗ), но побеждаете.';
+            return { text: `${swordText} В логове вы находите ${monster?.reward?.gold ?? 4} золотых.` };
+          },
         },
-      },
-      {
-        text: 'Применить заклинание сна',
-        next: 'forestEntrance',
-        apply: (state) => {
-          if (state.mana < 3) {
+        {
+          text: 'Применить заклинание сна',
+          next: 'forestEntrance',
+          apply: (state) => {
+            if (state.mana < 3) {
+              return {
+                text: 'Вы пытаетесь соткать заклинание, но маны не хватает. Приходится отступить.',
+                next: 'forestEntrance',
+              };
+            }
+            state.mana -= 3;
+            state.gold += 2;
+            return { text: 'Заклинание мягко погружает волков в сон. Вы бесшумно забираете 2 золотых.' };
+          },
+        },
+        {
+          text: 'Отступить',
+          next: 'forestEntrance',
+          apply: () => ({ text: 'Вы решаете не рисковать и возвращаетесь к развилке.' }),
+        },
+      ],
+    };
+  },
+  ancientRuins: (state) => {
+    const location = getLocation('ancientRuins');
+    const guardian = getMonster('ruin_specter');
+    return {
+      title: location?.title || 'Древние руины',
+      description:
+        `${location?.description || 'Разрушенный храм, в стенах которого ещё звучит эхо магии.'} ` +
+        (guardian
+          ? `У входа в руины стоит ${guardian.name}. Его глаза вспыхивают, когда вы приближаетесь.`
+          : 'У входа возвышается каменный страж.'),
+      options: [
+        {
+          text: 'Предъявить амулет удачи',
+          next: 'stormHeart',
+          apply: (state) => {
+            if (!state.inventory.includes('lucky_amulet')) {
+              state.hp = Math.max(state.hp - 5, 0);
+              return {
+                text: 'Без амулета страж наносит вам удар (-5 ОЗ) и вы вынуждены отступить.',
+                next: 'ancientRuins',
+              };
+            }
+            return { text: 'Страж кланяется амулету и пропускает вас внутрь.' };
+          },
+        },
+        {
+          text: 'Сразиться со стражем',
+          next: 'stormHeart',
+          apply: (state) => {
+            const weaponBonus = state.inventory.includes('enchanted_blade') ? 0 : 5;
+            state.hp = Math.max(state.hp - weaponBonus, 0);
+            state.mana = Math.max(state.mana - 2, 0);
+            const text =
+              weaponBonus === 0
+                ? 'Зачарованный клинок рассеивает каменную броню. Победа даётся легко, хотя вы устали (-2 Маны).'
+                : 'Без магического оружия бой суров (-5 ОЗ, -2 Маны), но вы побеждаете.';
+            if (guardian?.reward?.items) {
+              guardian.reward.items.forEach((itemId) => {
+                if (!state.inventory.includes(itemId)) {
+                  state.inventory.push(itemId);
+                }
+              });
+            }
+            state.gold += guardian?.reward?.gold ?? 0;
+            return { text };
+          },
+        },
+        {
+          text: `Использовать ${itemName('healing_herbs')}`,
+          next: 'ancientRuins',
+          apply: (state) => {
+            const index = state.inventory.indexOf('healing_herbs');
+            if (index === -1) {
+              return { text: 'В сумке пусто. Лечебных трав не осталось.', next: 'ancientRuins' };
+            }
+            state.inventory.splice(index, 1);
+            const healValue = getItem('healing_herbs')?.effects?.heal ?? 6;
+            state.hp = Math.min(state.hp + healValue, 20);
+            return { text: `Вы завариваете травы и восстанавливаете силы (+${healValue} ОЗ). Страж терпеливо ждёт.` };
+          },
+        },
+      ],
+    };
+  },
+  stormHeart: () => {
+    const location = getLocation('heartChamber');
+    const guardian = getMonster('ancient_guardian');
+    return {
+      title: location?.title || 'Сердце Бури',
+      description:
+        `${location?.description || 'В центре зала сияет кристалл Сердца Бури.'} ` +
+        'Когда вы протягиваете руки, воздух наполняется электричеством.' +
+        (guardian
+          ? ` Кажется, эхо ${guardian.name} всё ещё витает рядом, напоминая о цене победы.`
+          : ''),
+      options: [
+        {
+          text: 'Забрать артефакт и вернуться в деревню',
+          next: 'victory',
+          apply: (state) => {
+            if (!state.inventory.includes('storm_heart')) {
+              state.inventory.push('storm_heart');
+            }
+            state.gold += 10;
             return {
-              text: 'Вы пытаетесь соткать заклинание, но маны не хватает. Приходится отступить.',
-              next: 'forestEntrance',
+              text: 'Энергия наполняет вас, но вы чувствуете, что деревне нужен этот свет. Вы берёте артефакт и направляетесь домой.',
             };
-          }
-          state.mana -= 3;
-          state.gold += 2;
-          return { text: 'Заклинание мягко погружает волков в сон. Вы бесшумно забираете 2 золотых.' };
+          },
         },
-      },
-      {
-        text: 'Отступить',
-        next: 'forestEntrance',
-        apply: () => ({ text: 'Вы решаете не рисковать и возвращаетесь к развилке.' }),
-      },
-    ],
+        {
+          text: 'Попытаться поглотить мощь артефакта',
+          next: 'defeat',
+          apply: () => ({ text: 'Сила Сердца Бури слишком велика. Вспышка света — и всё исчезает...' }),
+        },
+      ],
+    };
   },
-  ancientRuins: {
-    title: 'Древние руины',
-    description:
-      'У входа в руины стоит каменный страж. Его глаза вспыхивают, когда вы приближаетесь.',
-    options: [
-      {
-        text: 'Предъявить амулет удачи',
-        next: 'stormHeart',
-        apply: (state) => {
-          if (!state.inventory.includes('Амулет удачи')) {
-            state.hp = Math.max(state.hp - 5, 0);
-            return {
-              text: 'Без амулета страж наносит вам удар (-5 ОЗ) и вы вынуждены отступить.',
-              next: 'ancientRuins',
-            };
-          }
-          return { text: 'Страж кланяется амулету и пропускает вас внутрь.' };
-        },
-      },
-      {
-        text: 'Сразиться со стражем',
-        next: 'stormHeart',
-        apply: (state) => {
-          const weaponBonus = state.inventory.includes('Зачарованный клинок') ? 0 : 5;
-          state.hp = Math.max(state.hp - weaponBonus, 0);
-          state.mana = Math.max(state.mana - 2, 0);
-          const text =
-            weaponBonus === 0
-              ? 'Зачарованный клинок рассеивает каменную броню. Победа даётся легко, хотя вы устали (-2 Маны).'
-              : 'Без магического оружия бой суров (-5 ОЗ, -2 Маны), но вы побеждаете.';
-          return { text };
-        },
-      },
-      {
-        text: 'Использовать лечебные травы',
-        next: 'ancientRuins',
-        apply: (state) => {
-          const index = state.inventory.indexOf('Лечебные травы');
-          if (index === -1) {
-            return { text: 'В сумке пусто. Лечебных трав не осталось.', next: 'ancientRuins' };
-          }
-          state.inventory.splice(index, 1);
-          state.hp = Math.min(state.hp + 6, 20);
-          return { text: 'Вы завариваете травы и восстанавливаете силы (+6 ОЗ). Страж терпеливо ждёт.' };
-        },
-      },
-    ],
-  },
-  stormHeart: {
-    title: 'Сердце Бури',
-    description:
-      'В центре зала сияет кристалл Сердца Бури. Когда вы протягиваете руки, воздух наполняется электричеством.',
-    options: [
-      {
-        text: 'Забрать артефакт и вернуться в деревню',
-        next: 'victory',
-        apply: (state) => {
-          if (!state.inventory.includes('Сердце Бури')) {
-            state.inventory.push('Сердце Бури');
-          }
-          state.gold += 10;
-          return {
-            text: 'Энергия наполняет вас, но вы чувствуете, что деревне нужен этот свет. Вы берёте артефакт и направляетесь домой.',
-          };
-        },
-      },
-      {
-        text: 'Попытаться поглотить мощь артефакта',
-        next: 'defeat',
-        apply: () => ({ text: 'Сила Сердца Бури слишком велика. Вспышка света — и всё исчезает...' }),
-      },
-    ],
-  },
-  victory: {
+  victory: () => ({
     title: 'Триумф героя',
     description:
       'Вы возвращаетесь в Эльдруин. Жители встречают вас аплодисментами, а тавернщик устраивает пир в вашу честь. Деревня спасена! 🎉',
     options: [],
-  },
-  defeat: {
+  }),
+  defeat: () => ({
     title: 'Гибель героя',
     description:
       'Сила артефакта оказалась сильнее. Ваши подвиги будут помнить, но путешествие окончено. Попробуйте снова, выбрав иной путь.',
     options: [],
-  },
+  }),
 };
 
-function buildKeyboard(stepKey) {
-  const step = STEPS[stepKey];
-  if (!step || !step.options.length) {
+function buildKeyboard(stepKey, state) {
+  const step = resolveStep(stepKey, state);
+  if (!step || !step.options || step.options.length === 0) {
     return undefined;
   }
   const buttons = step.options.map((option, index) => [
@@ -320,7 +450,7 @@ function formatStatus(state) {
     `❤ Здоровье: ${state.hp}`,
     `🔮 Мана: ${state.mana}`,
     `🪙 Золото: ${state.gold}`,
-    `🎒 Инвентарь: ${state.inventory.join(', ') || 'пусто'}`,
+    `🎒 Инвентарь: ${formatItemList(state.inventory)}`,
     state.log.length ? `📝 Памятные события:\n- ${state.log.slice(-5).join('\n- ')}` : null,
   ]
     .filter(Boolean)
@@ -386,12 +516,12 @@ async function sendStep(chatId, userId) {
   if (!state) {
     return;
   }
-  const step = STEPS[state.stage];
+  const step = resolveStep(state.stage, state);
   if (!step) {
     await sendMessage(chatId, 'Неизвестный этап приключения. Попробуйте /restart.');
     return;
   }
-  const keyboard = buildKeyboard(state.stage);
+  const keyboard = buildKeyboard(state.stage, state);
   const statusText = formatStatus(state);
   const message = `*${step.title}*\n\n${step.description}\n\n${statusText}`;
   await sendMessage(chatId, message, keyboard ? { reply_markup: keyboard } : undefined);
@@ -409,13 +539,14 @@ async function handleCallback(update) {
     await answerCallbackQuery(callbackId, 'Игра ещё не начата. Используйте /start.');
     return;
   }
-  const [stepKey, optionIndex] = data.split('|');
+  const [stepKey, optionIndexRaw] = data.split('|');
   if (stepKey !== state.stage) {
     await answerCallbackQuery(callbackId, 'Эта кнопка больше неактуальна.');
     return;
   }
-  const step = STEPS[stepKey];
-  const option = step?.options?.[Number(optionIndex)];
+  const optionIndex = Number(optionIndexRaw);
+  const step = resolveStep(stepKey, state);
+  const option = step?.options?.[optionIndex];
   if (!option) {
     await answerCallbackQuery(callbackId, 'Неизвестный выбор.');
     return;
@@ -450,6 +581,174 @@ async function handleCallback(update) {
   await sendStep(update.callback_query.message.chat.id, userId);
 }
 
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(String(userId));
+}
+
+function parseJsonArgument(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return null;
+  }
+}
+
+function upsertEntry(collection, entry) {
+  const index = collection.findIndex((item) => item.id === entry.id);
+  if (index >= 0) {
+    collection[index] = { ...collection[index], ...entry };
+  } else {
+    collection.push(entry);
+  }
+}
+
+function deleteEntry(collection, id) {
+  const index = collection.findIndex((item) => item.id === id);
+  if (index >= 0) {
+    collection.splice(index, 1);
+    return true;
+  }
+  return false;
+}
+
+function formatCollection(collection) {
+  if (!collection.length) {
+    return 'Список пуст.';
+  }
+  return collection
+    .map((item) => `• ${item.id} — ${item.name || item.title || 'без названия'}`)
+    .join('\n');
+}
+
+async function tryHandleAdminCommand(message) {
+  const { text, chat, from } = message;
+  if (!text.startsWith('/')) {
+    return false;
+  }
+  const command = text.split(' ')[0];
+  if (!['/admin', '/list_monsters', '/list_items', '/list_locations', '/add_monster', '/add_item', '/add_location', '/delete_monster', '/delete_item', '/delete_location', '/reload_data'].includes(command)) {
+    return false;
+  }
+  if (!isAdmin(from.id)) {
+    await sendMessage(chat.id, 'Эта команда доступна только администраторам.');
+    return true;
+  }
+
+  const argument = text.slice(command.length).trim();
+
+  switch (command) {
+    case '/admin':
+      await sendMessage(
+        chat.id,
+        'Админ-команды:\n' +
+          '/list_monsters — показать всех монстров\n' +
+          '/list_items — показать все предметы\n' +
+          '/list_locations — показать все локации\n' +
+          '/add_monster {json} — добавить или обновить монстра\n' +
+          '/add_item {json} — добавить или обновить предмет\n' +
+          '/add_location {json} — добавить или обновить локацию\n' +
+          '/delete_monster ID — удалить монстра\n' +
+          '/delete_item ID — удалить предмет\n' +
+          '/delete_location ID — удалить локацию\n' +
+          '/reload_data — перечитать файлы данных',
+      );
+      return true;
+    case '/list_monsters':
+      await sendMessage(chat.id, formatCollection(monsters));
+      return true;
+    case '/list_items':
+      await sendMessage(chat.id, formatCollection(items));
+      return true;
+    case '/list_locations':
+      await sendMessage(chat.id, formatCollection(locations));
+      return true;
+    case '/add_monster': {
+      const payload = parseJsonArgument(argument);
+      if (!payload || !payload.id) {
+        await sendMessage(chat.id, 'Нужно передать JSON с полем id.');
+        return true;
+      }
+      upsertEntry(monsters, payload);
+      saveJsonFile(DATA_FILES.monsters, monsters);
+      refreshData();
+      await sendMessage(chat.id, `Монстр ${payload.id} сохранён.`);
+      return true;
+    }
+    case '/add_item': {
+      const payload = parseJsonArgument(argument);
+      if (!payload || !payload.id) {
+        await sendMessage(chat.id, 'Нужно передать JSON с полем id.');
+        return true;
+      }
+      upsertEntry(items, payload);
+      saveJsonFile(DATA_FILES.items, items);
+      refreshData();
+      await sendMessage(chat.id, `Предмет ${payload.id} сохранён.`);
+      return true;
+    }
+    case '/add_location': {
+      const payload = parseJsonArgument(argument);
+      if (!payload || !payload.id) {
+        await sendMessage(chat.id, 'Нужно передать JSON с полем id.');
+        return true;
+      }
+      upsertEntry(locations, payload);
+      saveJsonFile(DATA_FILES.locations, locations);
+      refreshData();
+      await sendMessage(chat.id, `Локация ${payload.id} сохранена.`);
+      return true;
+    }
+    case '/delete_monster': {
+      if (!argument) {
+        await sendMessage(chat.id, 'Укажите идентификатор монстра.');
+        return true;
+      }
+      if (deleteEntry(monsters, argument)) {
+        saveJsonFile(DATA_FILES.monsters, monsters);
+        refreshData();
+        await sendMessage(chat.id, `Монстр ${argument} удалён.`);
+      } else {
+        await sendMessage(chat.id, 'Монстр с таким ID не найден.');
+      }
+      return true;
+    }
+    case '/delete_item': {
+      if (!argument) {
+        await sendMessage(chat.id, 'Укажите идентификатор предмета.');
+        return true;
+      }
+      if (deleteEntry(items, argument)) {
+        saveJsonFile(DATA_FILES.items, items);
+        refreshData();
+        await sendMessage(chat.id, `Предмет ${argument} удалён.`);
+      } else {
+        await sendMessage(chat.id, 'Предмет с таким ID не найден.');
+      }
+      return true;
+    }
+    case '/delete_location': {
+      if (!argument) {
+        await sendMessage(chat.id, 'Укажите идентификатор локации.');
+        return true;
+      }
+      if (deleteEntry(locations, argument)) {
+        saveJsonFile(DATA_FILES.locations, locations);
+        refreshData();
+        await sendMessage(chat.id, `Локация ${argument} удалена.`);
+      } else {
+        await sendMessage(chat.id, 'Локация с таким ID не найдена.');
+      }
+      return true;
+    }
+    case '/reload_data':
+      refreshData();
+      await sendMessage(chat.id, 'Данные перечитаны из файлов.');
+      return true;
+    default:
+      return false;
+  }
+}
+
 async function handleMessage(update) {
   const message = update.message;
   if (!message || !message.text) {
@@ -458,6 +757,10 @@ async function handleMessage(update) {
   const text = message.text.trim();
   const chatId = message.chat.id;
   const userId = message.from.id;
+
+  if (await tryHandleAdminCommand(message)) {
+    return;
+  }
 
   if (text === '/start') {
     await handleStart(chatId, userId);
