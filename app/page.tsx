@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useProductStore } from '@/stores/useProductStore'
 import ProductList from '@/components/ProductList'
-import SearchFilter from '@/components/SearchFilter'
+
 import Pagination from '@/components/Pagination'
 import Link from 'next/link'
 
@@ -11,8 +11,7 @@ export default function ProductsPage() {
   const {
     initializeProducts,
     getPaginatedProducts,
-    setSearchQuery,
-    setFilters
+    
   } = useProductStore()
   const favoritesCount = useProductStore((state) => state.favorites?.length ?? 0)
   
@@ -75,10 +74,6 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex flex-col gap-10">
-          <SearchFilter
-            onSearch={setSearchQuery}
-            onFilterChange={setFilters}
-          />
 
           {isLoading ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

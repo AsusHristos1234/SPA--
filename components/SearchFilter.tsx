@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { Search, Filter, X, SlidersHorizontal } from 'lucide-react'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
 
 interface SearchFilterProps {
   onSearch: (query: string) => void
   onFilterChange: (filters: any) => void
+   className?: string
 }
 
-export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterProps) {
+export default function SearchFilter({ onSearch, onFilterChange, className = '' }: SearchFilterProps) {
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
@@ -22,7 +24,7 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
   }, [search, onSearch])
 
   const handleFilterChange = (key: string, value: any) => {
-       const newFilters = { ...filters, [key]: value }
+        const newFilters = { ...filters, [key]: value }
     setFilters(newFilters)
     onFilterChange(newFilters)
   }
@@ -47,7 +49,7 @@ export default function SearchFilter({ onSearch, onFilterChange }: SearchFilterP
   ]
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className}`}>
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />

@@ -1,52 +1,74 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import ProductList from '@/components/ProductList'
 import { useProductStore } from '@/stores/useProductStore'
+import ProductList from '@/components/ProductList'
+import Pagination from '@/components/Pagination'
+import Link from 'next/link'
 
-export default function FavoritesPage() {
-  const products = useProductStore((state) => state.products)
-  const favorites = useProductStore((state) => state.favorites)
-  const initializeProducts = useProductStore((state) => state.initializeProducts)
-  const [isLoading, setIsLoading] = useState(products.length === 0)
+export default function ProductsPage() {
+  const {
+    initializeProducts,
+    getPaginatedProducts,
+    getFilteredProducts
+  } = useProductStore()
+  
+  const favoritesCount = useProductStore((state) => state.favorites?.length ?? 0)
+  const filteredProducts = useProductStore((state) => state.getFilteredProducts?.() ?? [])
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const productsPerPage = 12
 
   useEffect(() => {
-    if (products.length === 0) {
+    const fetchProducts = async () => {
       setIsLoading(true)
-      fetch('https://jsonplaceholder.typicode.com/photos?_limit=50')
-        .then((res) => res.json())
-        .then((data) => {
-          initializeProducts(data)
-          setIsLoading(false)
-        })
-        .catch(() => setIsLoading(false))
-    } else {
-      setIsLoading(false)
-    }
-  }, [products.length, initializeProducts])
+      setError(null)
 
-  const hasFavorites = favorites && favorites.length > 0
+      try {
+        const response = await fetch('/api/products')
+
+        if (!response.ok) {
+          throw new Error('Failed to load products')
+        }
+
+        const data = await response.json()
+        initializeProducts(data)
+      } catch (err) {
+        console.error('Error fetching products', err)
+        setError('Не удалось загрузить товары. Попробуйте обновить страницу позже.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [initializeProducts])
+
+  const products = getPaginatedProducts(currentPage, productsPerPage)
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
+  const filteredLength = filteredProducts.length
 
   return (
-    <div className="flex-1 bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.12),_rgba(2,6,23,0.95))] pb-20">
+    <div className="flex-1 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_rgba(2,6,23,0.95))] pb-20">
       <div className="relative mx-auto max-w-6xl px-6 pt-16">
         <div className="mb-10 flex flex-col gap-6 rounded-3xl border border-white/10 bg-slate-900/70 p-8 backdrop-blur xl:flex-row xl:items-center xl:justify-between">
           <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-rose-200/70">Избранное</p>
-            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Ваши товары, отмеченные сердцем</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-200/70">Каталог</p>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">Управляйте товарами и продавайте по новым стандартам маркетплейса</h1>
             <p className="text-sm text-slate-300">
-              Здесь собираются товары, которые вы пометили лайком. Управляйте лучшими предложениями и возвращайтесь к ним, когда будете готовы вывести на витрину.
+              Синхронизируйте ассортимент, запускайте кампании и отслеживайте показатели. Каталог обновляется в реальном времени и соответствует требованиям закона о маркетплейсах.
             </p>
           </div>
           <Link
-            href="/products"
-            className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-transform transition-colors hover:border-white/40 hover:text-white"
+            href="/create-product"
+            className="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_20px_45px_-25px_rgba(56,189,248,0.8)] transition-all hover:translate-y-[-2px]"
           >
-            Вернуться в каталог
+            Добавить продукт
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5" />
-              <path d="M12 5l-7 7 7 7" />
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
             </svg>
           </Link>
         </div>
@@ -54,28 +76,61 @@ export default function FavoritesPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="animate-pulse rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+              <div
+                key={i}
+                className="animate-pulse rounded-3xl border border-white/10 bg-slate-900/60 p-6"
+              >
                 <div className="mb-4 h-40 rounded-2xl bg-slate-700/60" />
                 <div className="mb-2 h-4 rounded-full bg-slate-700/60" />
                 <div className="h-4 w-2/3 rounded-full bg-slate-700/60" />
               </div>
             ))}
           </div>
-        ) : hasFavorites ? (
-          <ProductList products={favorites} />
-        ) : (
-          <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-12 text-center text-white/70 backdrop-blur">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rose-500/30 to-orange-400/30 text-rose-200">
-              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-white">Список избранного пуст</h2>
-            <p className="mt-3 text-sm text-white/60">Добавляйте товары в избранное с помощью кнопки сердечка — и они появятся здесь для быстрого доступа.</p>
+        ) : error ? (
+          <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-8 text-center text-sm text-rose-100">
+            <p>{error}</p>
           </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-6 rounded-3xl border border-white/5 bg-white/5 p-6 text-sm text-white/70 backdrop-blur-lg sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                Найдено {filteredLength} товаров · страница {currentPage} из {totalPages}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white transition-all">
+                  Все товары
+                </button>
+                <Link
+                  href="/favorites"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/60 transition-all hover:border-white/30 hover:text-white"
+                >
+                  Избранное
+                  {favoritesCount > 0 && (
+                    <span className="rounded-full bg-gradient-to-r from-rose-500 to-orange-400 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-950">
+                      {favoritesCount}
+                    </span>
+                  )}
+                </Link>
+                <button className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white/60 transition-all hover:border-white/30 hover:text-white">
+                  Новинки
+                </button>
+              </div>
+            </div>
+
+            <ProductList products={products} />
+
+            {totalPages > 1 && (
+              <div className="flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   )
 }
-

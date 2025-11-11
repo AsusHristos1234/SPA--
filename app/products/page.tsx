@@ -1,55 +1,90 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useProductStore } from '@/stores/useProductStore'
-import ProductList from '@/components/ProductList'
-import SearchFilter from '@/components/SearchFilter'
-import Pagination from '@/components/Pagination'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 
+import ProductList from '@/components/ProductList'
+import Pagination from '@/components/Pagination'
+import { useProductStore } from '@/stores/useProductStore'
+import type { Product } from '@/types/product'
+
 export default function ProductsPage() {
-  const {
-    initializeProducts,
-    getPaginatedProducts,
-    setSearchQuery,
-    setFilters
-  } = useProductStore()
+  const { initializeProducts } = useProductStore()
   const favoritesCount = useProductStore((state) => state.favorites?.length ?? 0)
-  
+  const filteredProducts = useProductStore((state) => state.getFilteredProducts())
+  const totalFiltered = filteredProducts.length
+
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const productsPerPage = 12
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isMounted = true
+
     const fetchProducts = async () => {
-      setIsLoading(true)
-      setError(null)
+      const existingProducts = useProductStore.getState().products
+
+      if (existingProducts.length > 0) {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+        return
+      }
+
+      if (isMounted) {
+        setIsLoading(true)
+        setError(null)
+      }
 
       try {
-        const response = await fetch('/api/products')
+        const response = await fetch('/api/products', { signal: controller.signal })
 
         if (!response.ok) {
           throw new Error('Failed to load products')
         }
 
-        const data = await response.json()
-        initializeProducts(data)
+        const data: Product[] = await response.json()
+
+        if (isMounted) {
+          initializeProducts(data)
+        }
       } catch (err) {
+        if ((err as Error)?.name === 'AbortError') {
+          return
+        }
+
         console.error('Error fetching products', err)
-        setError('Не удалось загрузить товары. Попробуйте обновить страницу позже.')
+
+        if (isMounted) {
+          setError('Не удалось загрузить товары. Попробуйте обновить страницу позже.')
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchProducts()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [initializeProducts])
 
-  const products = getPaginatedProducts(currentPage, productsPerPage)
-  const totalPages = Math.ceil(useProductStore.getState().getFilteredProducts().length / productsPerPage)
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / productsPerPage))
 
-  const filteredLength = useProductStore.getState().getFilteredProducts().length
+  useEffect(() => {
+    setCurrentPage((prev) => (prev > totalPages ? totalPages : prev))
+  }, [totalPages])
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * productsPerPage
+    return filteredProducts.slice(start, start + productsPerPage)
+  }, [currentPage, filteredProducts, productsPerPage])
 
   return (
     <div className="flex-1 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_rgba(2,6,23,0.95))] pb-20">
@@ -75,11 +110,6 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex flex-col gap-10">
-          <SearchFilter
-            onSearch={setSearchQuery}
-            onFilterChange={setFilters}
-          />
-
           {isLoading ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...Array(8)].map((_, i) => (
@@ -101,7 +131,7 @@ export default function ProductsPage() {
             <>
               <div className="flex flex-col gap-6 rounded-3xl border border-white/5 bg-white/5 p-6 text-sm text-white/70 backdrop-blur-lg sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  Найдено {filteredLength} товаров · страница {currentPage} из {totalPages}
+                  Найдено {totalFiltered} товаров · страница {currentPage} из {totalPages}
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white">
@@ -124,9 +154,19 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <ProductList products={products} />
+              {totalFiltered === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-white/20 bg-white/5 p-10 text-center text-white/60">
+                  <span className="text-5xl">🔍</span>
+                  <p className="text-base font-semibold text-white/80">По вашему запросу ничего не найдено</p>
+                  <p className="max-w-md text-sm text-white/60">
+                    Попробуйте изменить условия поиска или сбросить фильтры в плавающем футере, чтобы увидеть все доступные товары каталога.
+                  </p>
+                </div>
+              ) : (
+                <ProductList products={paginatedProducts} />
+              )}
 
-              {totalPages > 1 && (
+              {totalFiltered > 0 && totalPages > 1 && (
                 <div className="flex justify-center">
                   <Pagination
                     currentPage={currentPage}
