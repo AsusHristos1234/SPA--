@@ -373,16 +373,67 @@ function parsePriceFromHtml(html) {
     }
   }
 
-  const directMatch = html.match(/"price"\s*:\s*{\s*"price"\s*:\s*(\d+)/);
-  if (directMatch) {
-    return Number(directMatch[1]);
+  const normalizedHtml = normalizePriceHtml(html);
+  const fromJsonStrings = parsePriceFromJsonStrings(normalizedHtml);
+  if (typeof fromJsonStrings === 'number' && Number.isFinite(fromJsonStrings)) {
+    return fromJsonStrings;
   }
-  const fallbackMatch = html.match(/([0-9][0-9\s]{2,})\s*(₽|руб)/i);
+
+  const fallbackMatch = normalizedHtml.match(/([0-9][0-9\s.,]{2,})\s*(₽|руб\.?|RUB|&#8381;)/i);
   if (fallbackMatch) {
-    const numbers = fallbackMatch[1].replace(/\s+/g, '');
-    return Number(numbers);
+    const numbers = fallbackMatch[1].replace(/[^0-9]/g, '');
+    if (numbers) {
+      return Number(numbers);
+    }
   }
+
   return null;
+}
+
+function normalizePriceHtml(html) {
+  return String(html)
+    .replace(/&nbsp;|&#160;|&#8239;/gi, ' ')
+    .replace(/[\u00a0\u202f]/g, ' ')
+    .replace(/&quot;|&#34;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;|&#38;/gi, '&')
+    .replace(/&#x20bd;|&#8381;/gi, '₽');
+}
+
+function parsePriceFromJsonStrings(html) {
+  const patterns = [
+    /"finalPrice"\s*:\s*{[^}]*"price"\s*:\s*("?)([0-9\s.,]+)\1/i,
+    /"currentPrice"\s*:\s*("?)([0-9\s.,]+)\1/i,
+    /"priceValue"\s*:\s*("?)([0-9\s.,]+)\1/i,
+    /"convertedPrice"\s*:\s*("?)([0-9\s.,]+)\1/i,
+    /"rubPrice"\s*:\s*("?)([0-9\s.,]+)\1/i,
+    /"price"\s*:\s*{[^}]*"amount"\s*:\s*("?)([0-9\s.,]+)\1/i
+  ];
+
+  for (let i = 0; i < patterns.length; i += 1) {
+    const match = html.match(patterns[i]);
+    if (match) {
+      const price = extractNumber(match[2]);
+      if (typeof price === 'number' && Number.isFinite(price)) {
+        return price;
+      }
+    }
+  }
+
+  const genericPattern = /"price"\s*:\s*("?)([0-9\s.,]{3,})\1/gi;
+  let genericMatch = genericPattern.exec(html);
+  let bestPrice = null;
+  while (genericMatch) {
+    const price = extractNumber(genericMatch[2]);
+    if (typeof price === 'number' && Number.isFinite(price)) {
+      if (!bestPrice || price > bestPrice) {
+        bestPrice = price;
+      }
+    }
+    genericMatch = genericPattern.exec(html);
+  }
+
+  return bestPrice;
 }
 
 function parsePriceFromMeta(doc) {
