@@ -334,10 +334,11 @@ async function checkAllPrices(source = 'alarm') {
 async function fetchPrice(url) {
   if (!url) return null;
   const response = await fetch(url, {
-    credentials: 'omit',
+    credentials: 'include',
     cache: 'no-store',
+    mode: 'cors',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; OzonPriceTracker/1.0)',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Accept-Language': 'ru-RU,ru;q=0.9'
     }
   });
