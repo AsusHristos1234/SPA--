@@ -79,6 +79,48 @@ body {
   font-size: 14px;
 }
 
+.product-card__chart {
+  margin: 8px 0 10px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.product-card__chart-graph {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+.product-card__chart-graph--empty {
+  opacity: 0.35;
+}
+
+.product-card__chart-line {
+  stroke: #2563eb;
+  stroke-width: 2;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.product-card__chart-area {
+  fill: rgba(37, 99, 235, 0.18);
+}
+
+.product-card__chart-dot {
+  fill: #1d4ed8;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.product-card__chart-caption {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #475569;
+}
+
 .product-card__threshold {
   margin-top: 8px;
   background: #f3f4f6;

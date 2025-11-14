@@ -66,6 +66,8 @@ function renderProducts(products) {
     const title = node.querySelector('.product-card__title');
     const price = node.querySelector('.product-card__price');
     const stats = node.querySelector('.product-card__stats');
+    const chartSvg = node.querySelector('.product-card__chart-graph');
+    const chartCaption = node.querySelector('.product-card__chart-caption');
     const thresholdContainer = node.querySelector('.product-card__threshold');
     const thresholdInput = node.querySelector('.product-card__threshold-input');
     const thresholdStatus = node.querySelector('.product-card__threshold-status');
@@ -91,6 +93,8 @@ function renderProducts(products) {
       pieces.unshift(`Снижение: −${formatPrice(drop)}`);
     }
     stats.textContent = pieces.join(' • ');
+
+    renderPriceChart(chartSvg, chartCaption, product.history, product.id);
 
     if (thresholdContainer && thresholdInput && thresholdStatus) {
       const placeholder = product.lastKnownPrice ? Math.max(0, product.lastKnownPrice - 100) : '';
@@ -147,6 +151,136 @@ function calculateDrop(history) {
   const current = prices[prices.length - 1];
   const drop = max - current;
   return drop > 0 ? drop : 0;
+}
+
+function renderPriceChart(svg, captionNode, history, productId) {
+  if (!svg) return;
+
+  while (svg.firstChild) {
+    svg.removeChild(svg.firstChild);
+  }
+
+  const pointsLimit = 32;
+  const recent = (history || []).slice(-pointsLimit);
+  const series = [];
+
+  for (const entry of recent) {
+    const price = entry && Number(entry.price);
+    if (Number.isFinite(price)) {
+      series.push({
+        price,
+        timestamp: entry && entry.timestamp ? Number(entry.timestamp) : null
+      });
+    }
+  }
+
+  if (!series.length) {
+    svg.classList.add('product-card__chart-graph--empty');
+    if (captionNode) {
+      captionNode.textContent = 'История цен появится после нескольких обновлений.';
+    }
+    return;
+  }
+
+  svg.classList.remove('product-card__chart-graph--empty');
+
+  const width = 200;
+  const height = 60;
+  const minPrice = Math.min.apply(null, series.map((item) => item.price));
+  const maxPrice = Math.max.apply(null, series.map((item) => item.price));
+  const range = maxPrice - minPrice || 1;
+  const step = series.length > 1 ? width / (series.length - 1) : 0;
+
+  const points = series.map((item, index) => {
+    const x = series.length === 1 ? width / 2 : index * step;
+    const ratio = (item.price - minPrice) / range;
+    const y = height - ratio * height;
+    return { x, y };
+  });
+
+  const gradientId = buildGradientId(productId);
+  const defs = createSvgElement('defs');
+  const gradient = createSvgElement('linearGradient');
+  gradient.setAttribute('id', gradientId);
+  gradient.setAttribute('x1', '0');
+  gradient.setAttribute('x2', '0');
+  gradient.setAttribute('y1', '0');
+  gradient.setAttribute('y2', '1');
+
+  const stopTop = createSvgElement('stop');
+  stopTop.setAttribute('offset', '0%');
+  stopTop.setAttribute('stop-color', '#2563eb');
+  stopTop.setAttribute('stop-opacity', '0.28');
+  gradient.appendChild(stopTop);
+
+  const stopBottom = createSvgElement('stop');
+  stopBottom.setAttribute('offset', '100%');
+  stopBottom.setAttribute('stop-color', '#2563eb');
+  stopBottom.setAttribute('stop-opacity', '0');
+  gradient.appendChild(stopBottom);
+
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+
+  const lineCommands = [];
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    const command = (index === 0 ? 'M ' : 'L ') + point.x.toFixed(2) + ' ' + point.y.toFixed(2);
+    lineCommands.push(command);
+  }
+
+  const areaCommands = lineCommands.slice();
+  const lastPoint = points[points.length - 1];
+  const firstPoint = points[0];
+  areaCommands.push('L ' + lastPoint.x.toFixed(2) + ' ' + height.toFixed(2));
+  areaCommands.push('L ' + firstPoint.x.toFixed(2) + ' ' + height.toFixed(2));
+  areaCommands.push('Z');
+
+  const area = createSvgElement('path');
+  area.setAttribute('d', areaCommands.join(' '));
+  area.setAttribute('class', 'product-card__chart-area');
+  area.setAttribute('fill', 'url(#' + gradientId + ')');
+  svg.appendChild(area);
+
+  const line = createSvgElement('path');
+  line.setAttribute('d', lineCommands.join(' '));
+  line.setAttribute('class', 'product-card__chart-line');
+  svg.appendChild(line);
+
+  const highlight = createSvgElement('circle');
+  highlight.setAttribute('cx', lastPoint.x.toFixed(2));
+  highlight.setAttribute('cy', lastPoint.y.toFixed(2));
+  highlight.setAttribute('r', '3.6');
+  highlight.setAttribute('class', 'product-card__chart-dot');
+  svg.appendChild(highlight);
+
+  if (captionNode) {
+    if (series.length === 1) {
+      captionNode.textContent = 'История: пока только одно значение цены.';
+    } else if (maxPrice === minPrice) {
+      captionNode.textContent = 'История: ' + series.length + ' обновлений без изменения цены.';
+    } else {
+      captionNode.textContent =
+        'История: ' +
+        series.length +
+        ' обновлений, диапазон ' +
+        formatPrice(minPrice) +
+        ' — ' +
+        formatPrice(maxPrice) +
+        '.';
+    }
+  }
+}
+
+function buildGradientId(productId) {
+  const base = typeof productId === 'undefined' ? 'default' : String(productId);
+  const sanitized = base.replace(/[^a-zA-Z0-9_-]/g, '');
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return 'chartGradient-' + (sanitized || 'item') + '-' + suffix;
+}
+
+function createSvgElement(tag) {
+  return document.createElementNS('http://www.w3.org/2000/svg', tag);
 }
 
 async function saveTargetPrice(productId, input, statusNode) {
