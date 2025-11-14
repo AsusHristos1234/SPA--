@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ozon Price Tracker</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup__header">
+        <h1>Отслеживаемые товары</h1>
+        <button id="open-options" title="Настройки"></button>
+      </header>
+      <section id="product-list" class="popup__list"></section>
+      <footer class="popup__footer">
+        <button id="refresh">Обновить цены</button>
+      </footer>
+    </main>
+    <template id="product-template">
+      <article class="product-card">
+        <img class="product-card__image" alt="" />
+        <div class="product-card__content">
+          <h2 class="product-card__title"></h2>
+          <p class="product-card__price"></p>
+          <p class="product-card__stats"></p>
+          <div class="product-card__actions">
+            <a class="product-card__link" target="_blank" rel="noopener noreferrer">Открыть</a>
+            <button class="product-card__remove">Удалить</button>
+          </div>
+        </div>
+      </article>
+    </template>
+    <script src="popup.js"></script>
+  </body>
+</html>
