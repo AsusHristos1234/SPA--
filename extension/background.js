@@ -503,7 +503,11 @@ function derivePrimaryCategory(rawCategory, categoryPath) {
     }
   }
   if (Array.isArray(categoryPath) && categoryPath.length) {
-    return categoryPath[0] || categoryPath[categoryPath.length - 1] || UNCATEGORIZED_LABEL;
+    const last = categoryPath[categoryPath.length - 1];
+    if (last) {
+      return last;
+    }
+    return categoryPath[0] || UNCATEGORIZED_LABEL;
   }
   return UNCATEGORIZED_LABEL;
 }

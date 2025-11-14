@@ -130,6 +130,160 @@
     return img ? img.src : null;
   }
 
+  const CATEGORY_SCAN_LIMIT = 1200;
+
+  function splitCategoryString(value) {
+    if (!value && value !== 0) {
+      return [];
+    }
+    return String(value)
+      .split(/\s*[>›»«/|,\n\r]+\s*/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+
+  function collectCategoryCandidates(node, collected, visited, depth, budget) {
+    if (!node || budget.count >= CATEGORY_SCAN_LIMIT || depth > 6) {
+      return;
+    }
+
+    const nodeType = typeof node;
+    if (nodeType === 'string' || nodeType === 'number') {
+      const pieces = splitCategoryString(node);
+      if (pieces.length) {
+        collected.push(...pieces);
+      }
+      budget.count += 1;
+      return;
+    }
+
+    if (nodeType === 'boolean') {
+      budget.count += 1;
+      return;
+    }
+
+    if (Array.isArray(node)) {
+      budget.count += 1;
+      if (node.length && node.every((item) => typeof item === 'string')) {
+        node.forEach((item) => {
+          const parts = splitCategoryString(item);
+          if (parts.length) {
+            collected.push(...parts);
+          }
+        });
+        return;
+      }
+      for (let i = 0; i < node.length && budget.count < CATEGORY_SCAN_LIMIT; i += 1) {
+        collectCategoryCandidates(node[i], collected, visited, depth + 1, budget);
+      }
+      return;
+    }
+
+    if (nodeType === 'object') {
+      if (visited.has(node)) {
+        return;
+      }
+      visited.add(node);
+      budget.count += 1;
+
+      const candidateKeys = [
+        'category',
+        'categoryName',
+        'categoryTitle',
+        'category_path',
+        'categoryPath',
+        'category_path_text',
+        'catalogCategory',
+        'catalogSection',
+        'catalog_name',
+        'categories',
+        'categoryLabel',
+        'sectionName',
+        'superCategory'
+      ];
+
+      for (let i = 0; i < candidateKeys.length; i += 1) {
+        const key = candidateKeys[i];
+        if (!Object.prototype.hasOwnProperty.call(node, key)) {
+          continue;
+        }
+        const value = node[key];
+        if (!value && value !== 0) {
+          continue;
+        }
+        if (typeof value === 'string' || typeof value === 'number') {
+          const parts = splitCategoryString(value);
+          if (parts.length) {
+            collected.push(...parts);
+          }
+        } else if (Array.isArray(value)) {
+          collectCategoryCandidates(value, collected, visited, depth + 1, budget);
+        } else if (typeof value === 'object') {
+          collectCategoryCandidates(value, collected, visited, depth + 1, budget);
+        }
+      }
+
+      const breadcrumbKeys = [
+        'breadcrumbs',
+        'breadCrumbs',
+        'breadcrumb',
+        'categoryBreadcrumbs',
+        'categoryCrumbs',
+        'path'
+      ];
+
+      for (let i = 0; i < breadcrumbKeys.length; i += 1) {
+        const key = breadcrumbKeys[i];
+        if (!Object.prototype.hasOwnProperty.call(node, key)) {
+          continue;
+        }
+        const value = node[key];
+        if (!value) {
+          continue;
+        }
+        if (Array.isArray(value)) {
+          value.forEach((entry) => {
+            if (!entry && entry !== 0) {
+              return;
+            }
+            if (typeof entry === 'string' || typeof entry === 'number') {
+              const parts = splitCategoryString(entry);
+              if (parts.length) {
+                collected.push(...parts);
+              }
+            } else if (typeof entry === 'object') {
+              if (entry && (entry.name || entry.title || entry.text || entry.label)) {
+                const parts = splitCategoryString(entry.name || entry.title || entry.text || entry.label);
+                if (parts.length) {
+                  collected.push(...parts);
+                }
+              }
+              collectCategoryCandidates(entry, collected, visited, depth + 1, budget);
+            }
+          });
+        } else if (typeof value === 'object') {
+          collectCategoryCandidates(value, collected, visited, depth + 1, budget);
+        }
+      }
+
+      const keys = Object.keys(node);
+      for (let i = 0; i < keys.length && budget.count < CATEGORY_SCAN_LIMIT; i += 1) {
+        const value = node[keys[i]];
+        if (!value && value !== 0) {
+          continue;
+        }
+        if (
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          Array.isArray(value) ||
+          (typeof value === 'object' && value !== null)
+        ) {
+          collectCategoryCandidates(value, collected, visited, depth + 1, budget);
+        }
+      }
+    }
+  }
+
   function parseCategoryPathFromMeta(title) {
     const nodes = document.querySelectorAll(
       'meta[itemprop="category"], meta[property="product:category"], meta[name="category"], meta[name="product:category"]'
@@ -176,6 +330,105 @@
         // ignore malformed JSON blocks
       }
     }
+    return sanitizeCategoryParts(collected, title);
+  }
+
+  function parseCategoryPathFromDataLayer(title) {
+    const layer = window.dataLayer;
+    if (!Array.isArray(layer) || !layer.length) {
+      return [];
+    }
+    const collected = [];
+    const visited = new WeakSet();
+    const budget = { count: 0 };
+    for (let i = 0; i < layer.length && budget.count < CATEGORY_SCAN_LIMIT; i += 1) {
+      collectCategoryCandidates(layer[i], collected, visited, 0, budget);
+    }
+    return sanitizeCategoryParts(collected, title);
+  }
+
+  function tryParseJsonLike(text) {
+    if (!text) {
+      return null;
+    }
+    let trimmed = text.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (trimmed[0] === '{' || trimmed[0] === '[') {
+      try {
+        return JSON.parse(trimmed);
+      } catch (error) {
+        // continue with relaxed parsing
+      }
+    }
+    const braceIndex = trimmed.search(/[\[{]/);
+    if (braceIndex === -1) {
+      return null;
+    }
+    trimmed = trimmed.slice(braceIndex);
+    trimmed = trimmed.replace(/;\s*$/, '');
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function parseCategoryPathFromStateScripts(title) {
+    const selectors = [
+      'script[type="application/json"][data-state-chunk]',
+      'script[type="application/json"][data-state]',
+      'script[type="application/json"][id^="state-"]',
+      'script[type="application/json"][id^="__NUXT_DATA__"]',
+      'script[type="application/json"][id^="__NEXT_DATA__"]',
+      'script[type="application/json"][id^="__APOLLO_STATE__"]'
+    ];
+
+    const collected = [];
+    const visited = new WeakSet();
+    const budget = { count: 0 };
+
+    for (let s = 0; s < selectors.length && budget.count < CATEGORY_SCAN_LIMIT; s += 1) {
+      const scripts = document.querySelectorAll(selectors[s]);
+      for (let i = 0; i < scripts.length && budget.count < CATEGORY_SCAN_LIMIT; i += 1) {
+        const script = scripts[i];
+        const data = tryParseJsonLike(script.textContent || script.innerText || '');
+        if (!data) {
+          continue;
+        }
+        collectCategoryCandidates(data, collected, visited, 0, budget);
+      }
+    }
+
+    return sanitizeCategoryParts(collected, title);
+  }
+
+  function parseCategoryPathFromWindowState(title) {
+    const sources = [
+      window.__NUXT__ && window.__NUXT__.state,
+      window.__NUXT__ && window.__NUXT__.data,
+      window.__NUXT__,
+      window.__NUXT_DATA__,
+      window.__NEXT_DATA__,
+      window.__INITIAL_STATE__,
+      window.ozon,
+      window.ozon && window.ozon.state,
+      window.__APP_STATE__
+    ].filter(Boolean);
+
+    if (!sources.length) {
+      return [];
+    }
+
+    const collected = [];
+    const visited = new WeakSet();
+    const budget = { count: 0 };
+
+    for (let i = 0; i < sources.length && budget.count < CATEGORY_SCAN_LIMIT; i += 1) {
+      collectCategoryCandidates(sources[i], collected, visited, 0, budget);
+    }
+
     return sanitizeCategoryParts(collected, title);
   }
 
@@ -266,6 +519,18 @@
     if (fromBreadcrumbs.length) {
       return fromBreadcrumbs;
     }
+    const fromDataLayer = parseCategoryPathFromDataLayer(title);
+    if (fromDataLayer.length) {
+      return fromDataLayer;
+    }
+    const fromStateScripts = parseCategoryPathFromStateScripts(title);
+    if (fromStateScripts.length) {
+      return fromStateScripts;
+    }
+    const fromWindow = parseCategoryPathFromWindowState(title);
+    if (fromWindow.length) {
+      return fromWindow;
+    }
     return [];
   }
 
@@ -273,7 +538,11 @@
     if (!Array.isArray(categoryPath) || !categoryPath.length) {
       return null;
     }
-    return categoryPath[0] || categoryPath[categoryPath.length - 1] || null;
+    const last = categoryPath[categoryPath.length - 1];
+    if (last) {
+      return last;
+    }
+    return categoryPath[0] || null;
   }
 
   function updateState() {
