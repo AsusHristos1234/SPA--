@@ -24,7 +24,7 @@ refreshButton.addEventListener('click', async () => {
   refreshButton.disabled = true;
   refreshButton.textContent = 'Обновляем...';
   try {
-    await chrome.runtime.sendMessage({ action: 'FORCE_PRICE_CHECK' });
+    await sendMessage({ action: 'FORCE_PRICE_CHECK' });
     await loadProducts();
   } finally {
     refreshButton.disabled = false;
@@ -131,7 +131,7 @@ function renderProducts(products) {
     link.href = product.url;
 
     remove.addEventListener('click', async () => {
-      await chrome.runtime.sendMessage({ action: 'REMOVE_PRODUCT', payload: { id: product.id } });
+      await sendMessage({ action: 'REMOVE_PRODUCT', payload: { id: product.id } });
       loadProducts();
     });
 

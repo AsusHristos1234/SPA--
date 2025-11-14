@@ -6,6 +6,18 @@ const DEFAULT_SETTINGS = {
   checkIntervalMinutes: 60
 };
 
+function sendMessage(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const input = document.getElementById('interval');
   const toast = document.getElementById('toast');
@@ -14,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('save').addEventListener('click', async () => {
     const value = Math.max(1, Number(input.value) || DEFAULT_SETTINGS.checkIntervalMinutes);
-    await chrome.runtime.sendMessage({
+    await sendMessage({
       action: 'UPDATE_SETTINGS',
       payload: { checkIntervalMinutes: value }
     });
