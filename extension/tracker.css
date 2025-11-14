@@ -106,15 +106,20 @@
 
 
 .tracker__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(256px, 1fr));
-  gap: clamp(16px, 1.8vw, 24px);
-  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: clamp(20px, 2.5vw, 32px);
+  padding: 8px 4px 4px;
+  box-sizing: border-box;
 }
 
 .tracker__card {
+  flex: 0 1 clamp(280px, 19vw, 340px);
+  max-width: 340px;
   width: 100%;
-  min-height: 100%;
+  box-sizing: border-box;
   padding-bottom: 18px;
 }
 
@@ -155,10 +160,10 @@
 }
 
 .tracker__list .empty-message {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
+  text-align: center;
   margin: 0;
   padding: 48px 24px;
-  text-align: center;
   font-size: 16px;
   color: #64748b;
   background: #fff;
@@ -187,25 +192,8 @@
 }
 
 @media (max-width: 1180px) {
-  .tracker__list {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  .tracker__card {
+    flex-basis: clamp(240px, 42vw, 320px);
   }
 }
 
-@media (min-width: 1880px) {
-  .tracker__list {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 920px) {
-  .tracker__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .tracker__list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}

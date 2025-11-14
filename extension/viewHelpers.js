@@ -15,7 +15,8 @@
       emptyMessage = 'Список отслеживания пуст. Откройте карточку товара и нажмите «Добавить в отслеживание».',
       onChange,
       compactPriceLabels = false,
-      emptyRenderer
+      emptyRenderer,
+      syncRowToggles = false
     } = config;
 
     if (!listElement || !templateElement) {
@@ -148,8 +149,13 @@
         if (toggle) {
           setCardCollapsedState(node, toggle, collapsedByDefault);
           toggle.addEventListener('click', () => {
-            const collapsed = node.classList.contains('product-card--collapsed');
-            setCardCollapsedState(node, toggle, !collapsed);
+            const currentlyCollapsed = node.classList.contains('product-card--collapsed');
+            const nextCollapsed = !currentlyCollapsed;
+            if (syncRowToggles) {
+              setRowCollapsedState(listElement, node, nextCollapsed);
+            } else {
+              setCardCollapsedState(node, toggle, nextCollapsed);
+            }
           });
         }
 
@@ -382,6 +388,23 @@
       toggle.title = title;
       toggle.setAttribute('aria-label', title);
       toggle.textContent = collapsed ? '▸' : '▾';
+    }
+  }
+
+  function setRowCollapsedState(container, sourceCard, collapsed) {
+    if (!container || !sourceCard) {
+      return;
+    }
+    const cards = Array.from(container.querySelectorAll('.tracker__card'));
+    if (!cards.length) {
+      return;
+    }
+    const baseTop = sourceCard.offsetTop;
+    const tolerance = 4;
+    const rowCards = cards.filter((card) => Math.abs(card.offsetTop - baseTop) <= tolerance);
+    for (const card of rowCards) {
+      const toggle = card.querySelector('.product-card__toggle');
+      setCardCollapsedState(card, toggle, collapsed);
     }
   }
 

@@ -21,6 +21,7 @@ const renderer = createRenderer({
   listElement: list,
   templateElement: template,
   collapsedByDefault: true,
+  syncRowToggles: true,
   sendMessage,
   onChange: async () => {
     await loadProducts();
