@@ -33,13 +33,61 @@
     return digits ? digits[1] : null;
   }
 
-  function parsePrice() {
-    const priceContainer = document.querySelector('[data-widget="webCurrentPrice"], [data-widget="webDetailBlock"], [data-widget="webPricing"], [data-widget="webMainPrice"]');
+  function parsePriceFromMeta() {
+    const metaNode = document.querySelector('meta[itemprop="price"], [itemprop="price"]');
+    if (!metaNode) {
+      return null;
+    }
+    const candidate = metaNode.getAttribute('content') || metaNode.textContent;
+    return extractNumber(candidate);
+  }
+
+  function parsePriceFromStructuredData() {
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (let i = 0; i < scripts.length; i += 1) {
+      try {
+        const data = JSON.parse(scripts[i].textContent || '{}');
+        if (!data) {
+          continue;
+        }
+        if (data.offers && typeof data.offers === 'object') {
+          if (Array.isArray(data.offers)) {
+            for (let j = 0; j < data.offers.length; j += 1) {
+              const offer = data.offers[j];
+              if (offer && offer.price) {
+                const price = extractNumber(String(offer.price));
+                if (price) {
+                  return price;
+                }
+              }
+            }
+          } else if (data.offers.price) {
+            const price = extractNumber(String(data.offers.price));
+            if (price) {
+              return price;
+            }
+          }
+        }
+        if (data.price) {
+          const price = extractNumber(String(data.price));
+          if (price) {
+            return price;
+          }
+        }
+      } catch (error) {
+        // ignore malformed JSON blocks
+      }
+    }
+    return null;
+  }
+
+  function parsePriceFromWidgets() {
+    const priceContainer = document.querySelector('[data-widget="webCurrentPrice"], [data-widget="webDetailBlock"], [data-widget="webPricing"], [data-widget="webMainPrice"], [data-widget="webSale"]');
     if (!priceContainer) {
       return null;
     }
 
-    const priceTextCandidate = Array.from(priceContainer.querySelectorAll('span, div'))
+    const priceTextCandidate = Array.from(priceContainer.querySelectorAll('span, div, p, strong'))
       .map((node) => node.textContent || '')
       .find((text) => /\d/.test(text) && /₽|руб|RUB/i.test(text));
 
@@ -49,6 +97,14 @@
     }
 
     return extractNumber(priceTextCandidate);
+  }
+
+  function parsePrice() {
+    return (
+      parsePriceFromMeta() ||
+      parsePriceFromStructuredData() ||
+      parsePriceFromWidgets()
+    );
   }
 
   function extractNumber(text) {
