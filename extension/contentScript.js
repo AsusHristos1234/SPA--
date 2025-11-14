@@ -21,6 +21,13 @@
     priceDrop: null
   };
 
+  const BRIDGE_ATTRIBUTE = 'data-ozon-tracker-bridge';
+  const BRIDGE_REQUEST_EVENT = 'ozon-tracker-request';
+  const BRIDGE_RESPONSE_EVENT = 'ozon-tracker-response';
+  let pendingCategoryRequest = null;
+
+  injectPageBridge();
+
   function parseProductId() {
     const url = window.location.pathname;
     const fromIdPattern = url.match(/id\/(\d{5,})/);
@@ -534,6 +541,89 @@
     return [];
   }
 
+  function requestCategoriesFromPage() {
+    return new Promise((resolve) => {
+      const requestId = 'cat-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+      let settled = false;
+
+      function cleanup() {
+        document.removeEventListener(BRIDGE_RESPONSE_EVENT, handleResponse, true);
+      }
+
+      function handleResponse(event) {
+        if (!event || !event.detail || event.detail.id !== requestId) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        const detail = event.detail;
+        if (detail && Array.isArray(detail.categories)) {
+          resolve(detail.categories.slice());
+        } else {
+          resolve([]);
+        }
+      }
+
+      document.addEventListener(BRIDGE_RESPONSE_EVENT, handleResponse, true);
+
+      setTimeout(() => {
+        if (!settled) {
+          cleanup();
+          resolve([]);
+        }
+      }, 500);
+
+      document.dispatchEvent(
+        new CustomEvent(BRIDGE_REQUEST_EVENT, {
+          detail: {
+            id: requestId,
+            type: 'categories'
+          }
+        })
+      );
+    });
+  }
+
+  function ensureCategories() {
+    if (Array.isArray(state.categoryPath) && state.categoryPath.length) {
+      return Promise.resolve(state.categoryPath);
+    }
+    if (pendingCategoryRequest) {
+      return pendingCategoryRequest;
+    }
+    pendingCategoryRequest = requestCategoriesFromPage()
+      .then((raw) => {
+        const source = Array.isArray(raw) ? raw : [];
+        const sanitized = sanitizeCategoryParts(source, state.title);
+        if (sanitized.length) {
+          state.categoryPath = sanitized;
+          state.category = derivePrimaryCategory(sanitized);
+        }
+        return state.categoryPath;
+      })
+      .catch(() => [])
+      .then((result) => {
+        pendingCategoryRequest = null;
+        return result;
+      });
+    return pendingCategoryRequest;
+  }
+
+  function injectPageBridge() {
+    const root = document.documentElement;
+    if (!root || root.hasAttribute(BRIDGE_ATTRIBUTE)) {
+      return;
+    }
+    root.setAttribute(BRIDGE_ATTRIBUTE, '1');
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('pageBridge.js');
+    script.async = false;
+    script.onload = () => {
+      script.remove();
+    };
+    (document.head || root).appendChild(script);
+  }
+
   function derivePrimaryCategory(categoryPath) {
     if (!Array.isArray(categoryPath) || !categoryPath.length) {
       return null;
@@ -591,8 +681,9 @@
     const addButton = wrapper.querySelector('.ozon-track-add');
     const removeButton = wrapper.querySelector('.ozon-track-remove');
 
-    addButton.addEventListener('click', () => {
+    addButton.addEventListener('click', async () => {
       updateState();
+      await ensureCategories();
       if (!state.productId || !state.price) {
         showToast('Не удалось определить цену товара. Обновите страницу.');
         return;
@@ -730,6 +821,8 @@
     });
   }
 
+  updateState();
+  ensureCategories();
   const widget = createWidget();
   refreshStatus();
 
