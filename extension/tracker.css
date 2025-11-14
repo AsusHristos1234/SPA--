@@ -20,9 +20,9 @@
 }
 
 .tracker {
-  max-width: 1480px;
+  max-width: 1660px;
   margin: 0 auto;
-  padding: 32px 24px 48px;
+  padding: 32px clamp(16px, 4vw, 48px) 48px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -107,8 +107,8 @@
 
 .tracker__list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(256px, 1fr));
+  gap: clamp(16px, 1.8vw, 24px);
   align-items: stretch;
 }
 
@@ -186,15 +186,15 @@
   }
 }
 
-@media (max-width: 1480px) {
+@media (max-width: 1180px) {
   .tracker__list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
 }
 
-@media (max-width: 1180px) {
+@media (min-width: 1880px) {
   .tracker__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
