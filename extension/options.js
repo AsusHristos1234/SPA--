@@ -3,7 +3,9 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_SETTINGS = {
-  checkIntervalMinutes: 60
+  checkIntervalMinutes: 60,
+  ozonClientId: '',
+  ozonApiKey: ''
 };
 
 function sendMessage(message) {
@@ -19,19 +21,31 @@ function sendMessage(message) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const input = document.getElementById('interval');
+  const intervalInput = document.getElementById('interval');
+  const clientIdInput = document.getElementById('client-id');
+  const apiKeyInput = document.getElementById('api-key');
   const toast = document.getElementById('toast');
   const settings = await loadSettings();
-  input.value = settings.checkIntervalMinutes;
+
+  intervalInput.value = settings.checkIntervalMinutes;
+  clientIdInput.value = settings.ozonClientId || '';
+  apiKeyInput.value = settings.ozonApiKey || '';
 
   document.getElementById('save').addEventListener('click', async () => {
-    const value = Math.max(1, Number(input.value) || DEFAULT_SETTINGS.checkIntervalMinutes);
+    const intervalValue = Math.max(1, Number(intervalInput.value) || DEFAULT_SETTINGS.checkIntervalMinutes);
+    const payload = {
+      checkIntervalMinutes: intervalValue,
+      ozonClientId: clientIdInput.value.trim(),
+      ozonApiKey: apiKeyInput.value.trim()
+    };
+
     await sendMessage({
       action: 'UPDATE_SETTINGS',
-      payload: { checkIntervalMinutes: value }
+      payload
     });
     toast.hidden = false;
-    toast.textContent = `Настройки сохранены. Проверяем каждые ${value} минут.`;
+    toast.textContent =
+      `Настройки сохранены. Проверяем каждые ${intervalValue} минут. Учетные данные API обновлены.`;
     setTimeout(() => (toast.hidden = true), 4000);
   });
 });

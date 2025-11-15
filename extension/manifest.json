@@ -9,7 +9,8 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://www.ozon.ru/*"
+    "https://www.ozon.ru/*",
+    "https://api-seller.ozon.ru/*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -4,7 +4,9 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_SETTINGS = {
-  checkIntervalMinutes: 60
+  checkIntervalMinutes: 60,
+  ozonClientId: '',
+  ozonApiKey: ''
 };
 
 const PRICE_CHECK_ALARM = 'ozon-price-check';
@@ -17,7 +19,10 @@ const DEFAULT_NOTIFICATION_ICON =
   );
 
 async function requestText(url, options) {
-  const settings = Object.assign({ headers: {}, withCredentials: true }, options || {});
+  const settings = Object.assign(
+    { headers: {}, withCredentials: true, method: 'GET', body: null, cache: 'no-store' },
+    options || {}
+  );
   if (!url) {
     return '';
   }
@@ -26,7 +31,7 @@ async function requestText(url, options) {
     return new Promise((resolve, reject) => {
       try {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
+        xhr.open(settings.method || 'GET', url, true);
         xhr.withCredentials = Boolean(settings.withCredentials);
         const headerEntries = Object.entries(settings.headers || {});
         for (let i = 0; i < headerEntries.length; i += 1) {
@@ -54,7 +59,11 @@ async function requestText(url, options) {
         xhr.onabort = function onAbort() {
           reject(new Error('Request aborted'));
         };
-        xhr.send();
+        if (settings.body !== undefined && settings.body !== null) {
+          xhr.send(settings.body);
+        } else {
+          xhr.send();
+        }
       } catch (error) {
         reject(error);
       }
@@ -62,9 +71,11 @@ async function requestText(url, options) {
   }
 
   const response = await fetch(url, {
+    method: settings.method || 'GET',
     credentials: settings.withCredentials ? 'include' : 'omit',
-    cache: 'no-store',
-    headers: settings.headers || {}
+    cache: settings.cache || 'no-store',
+    headers: settings.headers || {},
+    body: settings.body
   });
   if (!response.ok) {
     throw new Error('HTTP ' + response.status);
@@ -236,23 +247,42 @@ async function getSettings() {
 async function setSettings(nextSettings) {
   await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: { ...DEFAULT_SETTINGS, ...nextSettings } });
   await ensureAlarm();
+  fetchPriceFromSellerApi.warnedMissingCredentials = false;
 }
 
 async function addProduct(product) {
-  if (!product || !product.id || !product.currentPrice) {
+  if (!product || !product.id) {
     return { ok: false, error: 'Некорректные данные товара' };
   }
   const products = await getProducts();
   const now = Date.now();
-  const historyEntry = { timestamp: now, price: Number(product.currentPrice) };
+  const settings = await getSettings();
+  let initialPrice = normalizeOzonPrice(product.currentPrice);
+
+  if (typeof initialPrice !== 'number' || !Number.isFinite(initialPrice) || initialPrice <= 0) {
+    try {
+      const apiPrice = await fetchPriceFromSellerApi(product, settings);
+      if (typeof apiPrice === 'number' && Number.isFinite(apiPrice) && apiPrice > 0) {
+        initialPrice = apiPrice;
+      }
+    } catch (error) {
+      console.warn('Не удалось получить начальную цену из Seller API', error);
+    }
+  }
+
+  if (typeof initialPrice !== 'number' || !Number.isFinite(initialPrice) || initialPrice <= 0) {
+    return { ok: false, error: 'Не удалось получить цену товара через API Ozon' };
+  }
+
+  const historyEntry = { timestamp: now, price: Number(initialPrice) };
   products[product.id] = {
     id: product.id,
     title: product.title,
     url: product.url,
     image: product.image,
     history: [historyEntry],
-    initialPrice: Number(product.currentPrice),
-    lastKnownPrice: Number(product.currentPrice),
+    initialPrice: Number(initialPrice),
+    lastKnownPrice: Number(initialPrice),
     lastUpdate: now,
     targetPrice: normalizeTargetPrice(product.targetPrice)
   };
@@ -392,9 +422,11 @@ async function checkAllPrices(source = 'alarm') {
     return;
   }
 
+  const settings = await getSettings();
+
   for (const product of entries) {
     try {
-      const freshPrice = await fetchPrice(product.url);
+      const freshPrice = await fetchPrice(product, settings);
       if (typeof freshPrice === 'number' && Number.isFinite(freshPrice) && freshPrice > 0) {
         await updateProductPrice(product.id, freshPrice, source);
       }
@@ -404,7 +436,20 @@ async function checkAllPrices(source = 'alarm') {
   }
 }
 
-async function fetchPrice(url) {
+async function fetchPrice(product, settings) {
+  const priceFromApi = await fetchPriceFromSellerApi(product, settings);
+  if (typeof priceFromApi === 'number' && Number.isFinite(priceFromApi) && priceFromApi > 0) {
+    return priceFromApi;
+  }
+
+  if (!product || !product.url) {
+    return null;
+  }
+
+  return fetchPriceFromPage(product.url);
+}
+
+async function fetchPriceFromPage(url) {
   if (!url) return null;
 
   const apiPrice = await fetchPriceFromComposerApi(url);
@@ -422,6 +467,154 @@ async function fetchPrice(url) {
     }
   });
   return parsePriceFromHtml(html);
+}
+
+async function fetchPriceFromSellerApi(product, settings) {
+  if (!product) {
+    return null;
+  }
+
+  const clientId = String((settings && settings.ozonClientId) || '').trim();
+  const apiKey = String((settings && settings.ozonApiKey) || '').trim();
+  if (!clientId || !apiKey) {
+    if (!fetchPriceFromSellerApi.warnedMissingCredentials) {
+      console.warn('Укажите Client ID и API Key Ozon Seller API в настройках расширения для фонового обновления цен.');
+      fetchPriceFromSellerApi.warnedMissingCredentials = true;
+    }
+    return null;
+  }
+
+  const filter = { visibility: 'ALL' };
+  const identifiers = [];
+  if (product.id) {
+    identifiers.push(String(product.id));
+  }
+  const numericId = extractNumericId(product.id || '');
+  if (numericId) {
+    filter.product_id = [numericId];
+    filter.sku = [numericId];
+  }
+  if (identifiers.length) {
+    filter.offer_id = identifiers;
+  }
+
+  const body = {
+    filter,
+    last_id: ''
+  };
+
+  let response = null;
+  try {
+    response = await requestJson('https://api-seller.ozon.ru/v4/product/info/prices', {
+      method: 'POST',
+      withCredentials: false,
+      headers: {
+        'Content-Type': 'application/json',
+        'Client-Id': clientId,
+        'Api-Key': apiKey
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    console.warn('Ошибка при обращении к Ozon Seller API', error);
+    return null;
+  }
+
+  if (!response) {
+    return null;
+  }
+
+  if (response.error) {
+    console.warn('Ozon Seller API вернул ошибку', response.error);
+    return null;
+  }
+
+  if (!response.result || !Array.isArray(response.result.items)) {
+    return null;
+  }
+
+  for (const item of response.result.items) {
+    if (!item) {
+      continue;
+    }
+    const blocks = [];
+    if (item.price) {
+      blocks.push(item.price);
+    }
+    if (item.price_info) {
+      blocks.push(item.price_info);
+    }
+
+    for (let b = 0; b < blocks.length; b += 1) {
+      const block = blocks[b];
+      if (!block) {
+        continue;
+      }
+      const candidates = [
+        block.price_with_promo,
+        block.price,
+        block.min_price,
+        block.base_price,
+        block.current_price,
+        block.price_value,
+        block.retail_price
+      ];
+      for (let i = 0; i < candidates.length; i += 1) {
+        const parsed = normalizeOzonPrice(candidates[i]);
+        if (typeof parsed === 'number') {
+          return parsed;
+        }
+      }
+    }
+
+    const fallbackCandidates = [item.min_price, item.current_price, item.price_value];
+    for (let j = 0; j < fallbackCandidates.length; j += 1) {
+      const parsed = normalizeOzonPrice(fallbackCandidates[j]);
+      if (typeof parsed === 'number') {
+        return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+fetchPriceFromSellerApi.warnedMissingCredentials = false;
+
+function extractNumericId(value) {
+  if (!value) {
+    return null;
+  }
+  const digits = String(value).replace(/[^0-9]/g, '');
+  if (!digits) {
+    return null;
+  }
+  const numeric = Number(digits);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return null;
+  }
+  return numeric;
+}
+
+function normalizeOzonPrice(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.round(value);
+  }
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+    if (!cleaned) {
+      return null;
+    }
+    const numeric = Number(cleaned);
+    if (!Number.isFinite(numeric)) {
+      return null;
+    }
+    return Math.round(numeric);
+  }
+  return null;
 }
 
 async function fetchPriceFromComposerApi(url) {

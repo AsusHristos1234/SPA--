@@ -23,6 +23,10 @@
         font-size: 24px;
         margin-bottom: 16px;
       }
+      h2 {
+        font-size: 18px;
+        margin: 24px 0 12px;
+      }
       p {
         line-height: 1.6;
         margin-bottom: 16px;
@@ -32,7 +36,9 @@
         font-weight: 600;
         margin-bottom: 8px;
       }
-      input[type="number"] {
+      input[type="number"],
+      input[type="text"],
+      input[type="password"] {
         width: 100%;
         padding: 12px;
         border-radius: 12px;
@@ -73,6 +79,20 @@
       <label for="interval">Интервал проверки (в минутах)</label>
       <input id="interval" type="number" min="1" step="1" value="60" />
       <p class="hint">Минимальный интервал — 1 минута. Оптимально ставить от 30 до 120 минут.</p>
+
+      <h2>Параметры доступа к Ozon Seller API</h2>
+      <p>
+        Чтобы расширение обновляло цены в фоне, укажите учётные данные
+        <strong>Client ID</strong> и <strong>API Key</strong>, созданные в кабинете продавца Ozon.
+        Запросы выполняются напрямую к <code>https://api-seller.ozon.ru</code>.
+      </p>
+      <label for="client-id">Client ID</label>
+      <input id="client-id" type="text" autocomplete="off" spellcheck="false" />
+      <label for="api-key">API Key</label>
+      <input id="api-key" type="password" autocomplete="off" spellcheck="false" />
+      <p class="hint">
+        Советуем создать отдельный ключ только для чтения цен и хранить его в безопасности. Ключ сохраняется локально в браузере.
+      </p>
       <button id="save">Сохранить</button>
       <div id="toast" class="toast" hidden>Настройки сохранены.</div>
     </div>

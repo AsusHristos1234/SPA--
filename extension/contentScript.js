@@ -194,6 +194,10 @@
         if (response && response.ok) {
           showToast('Товар добавлен в отслеживание.');
           refreshStatus();
+          return;
+        }
+        if (response && response.error) {
+          showToast(response.error);
         }
       });
     });
